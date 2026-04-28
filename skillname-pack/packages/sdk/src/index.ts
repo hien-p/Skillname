@@ -8,7 +8,7 @@
  *   const bundle = await resolveSkill('research.agent.eth')
  */
 
-import { createPublicClient, http, type PublicClient } from 'viem'
+import { createPublicClient, http, type Address, type PublicClient } from 'viem'
 import { mainnet, sepolia } from 'viem/chains'
 import { normalize, namehash } from 'viem/ens'
 
@@ -75,7 +75,7 @@ export interface Resource {
 }
 
 export interface ResolveOptions {
-  /** Chain to resolve ENS on. Default: mainnet. Use sepolia for testing. */
+  /** Chain to resolve ENS on. Default: 'sepolia' (hackathon). Use 'mainnet' for production names. */
   chain?: 'mainnet' | 'sepolia'
   /** Custom RPC URL */
   rpcUrl?: string
@@ -100,6 +100,28 @@ export interface ResolveResult {
 }
 
 // -------------------------------------------------------------------------
+// ENS Sepolia contract addresses
+//   • Reference deployments: https://docs.ens.domains/learn/deployments
+//   • Source impl:           https://github.com/ensdomains/ens-contracts/tree/staging/contracts
+//
+// We pin Sepolia explicitly because viem's bundled Universal Resolver address
+// can lag behind ENS Labs' production deployment, and during the hackathon we
+// want every resolution against the latest resolver.
+// -------------------------------------------------------------------------
+
+export const ENS_SEPOLIA = {
+  registry:                '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e',
+  baseRegistrar:           '0x57f1887a8bf19b14fc0df6fd9b2acc9af147ea85',
+  ethRegistrarController:  '0xfb3cE5D01e0f33f41DbB39035dB9745962F1f968',
+  dnsRegistrar:            '0x5a07C75Ae469Bf3ee2657B588e8E6ABAC6741b4f',
+  l1ReverseRegistrar:      '0xA0a1AbcDAe1a2a4A2EF8e9113Ff0e02DD81DC0C6',
+  defaultReverseRegistrar: '0x4F382928805ba0e23B30cFB75fC9E848e82DFD47',
+  nameWrapper:             '0x0635513f179D50A207757E05759CbD106d7dFcE8',
+  publicResolver:          '0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5',
+  universalResolver:       '0xeEeEEEeE14D718C2B47D9923Deab1335E144EeEe',
+} as const satisfies Record<string, Address>
+
+// -------------------------------------------------------------------------
 // Core resolution
 // -------------------------------------------------------------------------
 
@@ -115,16 +137,24 @@ export async function resolveSkill(
 ): Promise<ResolveResult> {
   const normalized = normalize(ensName)
 
+  // Default to Sepolia for hackathon — mainnet is opt-in.
+  const chain = options.chain ?? 'sepolia'
+
   const client = createPublicClient({
-    chain: options.chain === 'sepolia' ? sepolia : mainnet,
+    chain: chain === 'mainnet' ? mainnet : sepolia,
     transport: http(options.rpcUrl),
   }) as PublicClient
 
+  // Pin the Sepolia Universal Resolver to the current ENS Labs deployment;
+  // viem's default may lag. On mainnet, fall through to viem's bundled value.
+  const universalResolverAddress: Address | undefined =
+    chain === 'sepolia' ? ENS_SEPOLIA.universalResolver : undefined
+
   // 1. Read text records via Universal Resolver
   const [cidRaw, version, schema] = await Promise.all([
-    client.getEnsText({ name: normalized, key: SKILL_TEXT_KEY }),
-    client.getEnsText({ name: normalized, key: SKILL_VERSION_KEY }),
-    client.getEnsText({ name: normalized, key: SKILL_SCHEMA_KEY }),
+    client.getEnsText({ name: normalized, key: SKILL_TEXT_KEY, universalResolverAddress }),
+    client.getEnsText({ name: normalized, key: SKILL_VERSION_KEY, universalResolverAddress }),
+    client.getEnsText({ name: normalized, key: SKILL_SCHEMA_KEY, universalResolverAddress }),
   ])
 
   if (!cidRaw) {
@@ -146,7 +176,9 @@ export async function resolveSkill(
   // 5. ENSIP-25 check (optional)
   let ensip25
   if (bundle.trust?.erc8004) {
-    ensip25 = await verifyEnsip25(client, normalized, bundle.trust.erc8004)
+    ensip25 = await verifyEnsip25(client, normalized, bundle.trust.erc8004, {
+      universalResolverAddress,
+    })
   }
 
   return {
@@ -204,7 +236,8 @@ async function fetchAndVerify(
 export async function verifyEnsip25(
   client: PublicClient,
   ensName: string,
-  erc8004: { registry: string; agentId: number }
+  erc8004: { registry: string; agentId: number },
+  options: { universalResolverAddress?: Address } = {}
 ): Promise<{ bound: boolean; registry: string; agentId: number }> {
   const erc7930Encoded = encodeErc7930(erc8004.registry)
   const key = `agent-registration[${erc7930Encoded}][${erc8004.agentId}]`
@@ -212,6 +245,7 @@ export async function verifyEnsip25(
   const value = await client.getEnsText({
     name: normalize(ensName),
     key,
+    universalResolverAddress: options.universalResolverAddress,
   })
 
   return {

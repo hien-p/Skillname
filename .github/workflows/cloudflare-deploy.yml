@@ -1,0 +1,62 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main, staging]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web
+        run: |
+          if [ -d apps/web ]; then
+            pnpm --filter @skillname/web build
+          else
+            echo "::warning::apps/web does not exist yet — deploying placeholder"
+            mkdir -p apps/web/dist
+            cat > apps/web/dist/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>skillname</title></head>
+          <body style="font:16px/1.5 system-ui;max-width:40rem;margin:4rem auto;padding:0 1rem">
+          <h1>skillname</h1>
+          <p>ENS-native registry for AI agent skills. Coming soon.</p>
+          <p>Deployed from <code>${{ github.ref_name }}</code> · <code>${{ github.sha }}</code></p>
+          </body>
+          </html>
+          HTML
+          fi
+
+      - id: deploy
+        name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/web/dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.ref_name }} --commit-dirty=true

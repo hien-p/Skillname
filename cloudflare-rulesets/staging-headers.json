@@ -1,0 +1,41 @@
+{
+  "name": "skillname staging response headers",
+  "kind": "zone",
+  "phase": "http_response_headers_transform",
+  "description": "Same security headers as production, plus noindex so search engines do not crawl staging.",
+  "rules": [
+    {
+      "expression": "true",
+      "description": "Set security headers on all responses",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "Strict-Transport-Security": {
+            "operation": "set",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          "X-Content-Type-Options": {
+            "operation": "set",
+            "value": "nosniff"
+          },
+          "X-Frame-Options": {
+            "operation": "set",
+            "value": "DENY"
+          },
+          "Referrer-Policy": {
+            "operation": "set",
+            "value": "strict-origin-when-cross-origin"
+          },
+          "Permissions-Policy": {
+            "operation": "set",
+            "value": "camera=(), microphone=(), geolocation=()"
+          },
+          "X-Robots-Tag": {
+            "operation": "set",
+            "value": "noindex, nofollow"
+          }
+        }
+      }
+    }
+  ]
+}
