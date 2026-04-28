@@ -52,33 +52,43 @@ const RESOLVER_ABI = parseAbi([
 interface Args {
   parent: string
   cids: Record<string, string>
+  roots: Record<string, string>
+}
+
+function parsePairs(arg: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!arg) return out
+  for (const pair of arg.split(',')) {
+    const [k, v] = pair.split('=')
+    if (k && v) out[k.trim()] = v.trim()
+  }
+  return out
 }
 
 function parseArgs(): Args {
   const args = process.argv.slice(2)
   let parent = ''
   let cidsArg = ''
+  let rootsArg = ''
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--parent') parent = args[++i]
     else if (args[i] === '--cids') cidsArg = args[++i]
+    else if (args[i] === '--roots') rootsArg = args[++i]
   }
   if (!parent) {
     console.error('Missing --parent <ensName>')
-    console.error('Usage: pnpm tsx scripts/register-skills.ts --parent <name> [--cids <slug=cid,...>]')
+    console.error('Usage:')
+    console.error('  pnpm tsx scripts/register-skills.ts --parent <name>')
+    console.error('  pnpm tsx scripts/register-skills.ts --parent <name> --roots <slug=0xroot,...>      # 0G primary')
+    console.error('  pnpm tsx scripts/register-skills.ts --parent <name> --cids <slug=bafy...,...>     # IPFS')
+    console.error('  pnpm tsx scripts/register-skills.ts --parent <name> --roots ... --cids ...        # both')
     process.exit(1)
   }
-  const cids: Record<string, string> = {}
-  if (cidsArg) {
-    for (const pair of cidsArg.split(',')) {
-      const [k, v] = pair.split('=')
-      if (k && v) cids[k.trim()] = v.trim()
-    }
-  }
-  return { parent, cids }
+  return { parent, cids: parsePairs(cidsArg), roots: parsePairs(rootsArg) }
 }
 
 async function main(): Promise<void> {
-  const { parent, cids } = parseArgs()
+  const { parent, cids, roots } = parseArgs()
 
   const PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY as Hex | undefined
   const RPC_URL = process.env.SEPOLIA_RPC_URL ?? 'https://rpc.sepolia.org'
@@ -156,19 +166,28 @@ async function main(): Promise<void> {
       continue
     }
 
-    // 2. Set text records (only if CID provided)
+    // 2. Set text records.
+    // Precedence for the canonical xyz.manifest.skill record:
+    //   --roots (0G) takes priority over --cids (IPFS) — 0G is the project's
+    //   primary storage layer per the prize alignment. If --cids is also
+    //   provided, it lands on xyz.manifest.skill.ipfs as a dual-pin record.
+    const root = roots[slug]
     const cid = cids[slug]
-    if (!cid) {
-      console.log(`  · no CID provided, skipping text records`)
+    if (!root && !cid) {
+      console.log(`  · no --roots or --cids for ${slug}, skipping text records`)
       continue
     }
 
     const subNode = namehash(fullName)
-    const records: Array<[string, string]> = [
-      ['xyz.manifest.skill', `ipfs://${cid}`],
-      ['xyz.manifest.skill.version', manifest.version],
-      ['xyz.manifest.skill.schema', 'https://manifest.eth/schemas/skill-v1.json'],
-    ]
+    const records: Array<[string, string]> = []
+    if (root) {
+      records.push(['xyz.manifest.skill', `0g://${root}`])
+      if (cid) records.push(['xyz.manifest.skill.ipfs', `ipfs://${cid}`])
+    } else {
+      records.push(['xyz.manifest.skill', `ipfs://${cid}`])
+    }
+    records.push(['xyz.manifest.skill.version', manifest.version])
+    records.push(['xyz.manifest.skill.schema', 'https://manifest.eth/schemas/skill-v1.json'])
 
     for (const [key, value] of records) {
       try {
