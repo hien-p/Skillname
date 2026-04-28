@@ -1,0 +1,25 @@
+{
+  "name": "skillname",
+  "private": true,
+  "version": "0.0.1",
+  "description": "ENS-native registry for AI agent skills — one ENS name = one function.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "dev:bridge": "pnpm --filter @skillname/bridge dev",
+    "cli": "pnpm --filter @skillname/cli exec skill",
+    "validate-skills": "./scripts/test-issue-10.sh"
+  },
+  "engines": { "node": ">=20" },
+  "packageManager": "pnpm@10.28.0",
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8",
+    "@types/node": "^22.10.0",
+    "viem": "^2.21.55"
+  }
+}

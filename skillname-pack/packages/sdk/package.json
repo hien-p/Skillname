@@ -1,0 +1,25 @@
+{
+  "name": "@skillname/sdk",
+  "version": "0.0.1",
+  "description": "Resolve an ENS name into a verified MCP skill bundle.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@skillname/schema": "workspace:*",
+    "@helia/verified-fetch": "^2.3.0",
+    "viem": "^2.21.55"
+  }
+}

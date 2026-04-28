@@ -5,12 +5,14 @@
  *
  * Usage:
  *   import { resolveSkill } from '@skillname/sdk'
- *   const bundle = await resolveSkill('research.agent.eth')
+ *   const result = await resolveSkill('quote.uniswap.eth')
  */
 
 import { createPublicClient, http, type Address, type PublicClient } from 'viem'
 import { mainnet, sepolia } from 'viem/chains'
 import { normalize, namehash } from 'viem/ens'
+import { validate as validateBundle } from '@skillname/schema'
+import { createVerifiedFetch, type VerifiedFetch } from '@helia/verified-fetch'
 
 // -------------------------------------------------------------------------
 // Types
@@ -169,9 +171,12 @@ export async function resolveSkill(
   // 3. Fetch + verify
   const bundle = await fetchAndVerify(cid, options)
 
-  // 4. Validate against schema (lazy load to avoid hard dep at runtime)
-  // const { validate } = await import('@skillname/schema')
-  // if (!validate(bundle)) throw new Error('Invalid bundle: ' + validate.errors)
+  // 4. Validate against schema v1
+  const { valid, errors } = validateBundle(bundle)
+  if (!valid) {
+    const summary = (errors ?? []).map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')
+    throw new Error(`Bundle at CID ${cid} failed schema validation: ${summary}`)
+  }
 
   // 5. ENSIP-25 check (optional)
   let ensip25
@@ -196,14 +201,37 @@ export async function resolveSkill(
 // Fetch + content-address verify
 // -------------------------------------------------------------------------
 
+// Lazy-init Helia verified-fetch — initializing it eagerly costs ~300ms and
+// loads native bindings, so we defer until the first resolution call.
+let _verifiedFetch: VerifiedFetch | null = null
+async function getVerifiedFetch(): Promise<VerifiedFetch> {
+  if (!_verifiedFetch) {
+    _verifiedFetch = await createVerifiedFetch()
+  }
+  return _verifiedFetch
+}
+
 async function fetchAndVerify(
   cid: string,
   options: ResolveOptions
 ): Promise<SkillBundle> {
-  // For hackathon MVP: gateway fetch is fine.
-  // For production: swap to @helia/verified-fetch which auto-verifies CID hash.
-  const gateways = options.ipfsGateways ?? DEFAULT_GATEWAYS
+  // Default path: @helia/verified-fetch auto-verifies the CID content hash.
+  if (!options.skipVerification) {
+    try {
+      const verifiedFetch = await getVerifiedFetch()
+      const response = await verifiedFetch(`ipfs://${cid}/manifest.json`)
+      if (response.ok) {
+        return (await response.json()) as SkillBundle
+      }
+      console.warn(`Verified fetch returned ${response.status}; falling back to gateway`)
+    } catch (e) {
+      console.warn('Verified fetch failed, falling back to gateway:', e)
+    }
+  }
 
+  // Fallback: plain HTTP gateway fetch. Faster but does not verify the hash —
+  // only used when skipVerification is set, or when helia init / fetch failed.
+  const gateways = options.ipfsGateways ?? DEFAULT_GATEWAYS
   for (const gateway of gateways) {
     try {
       const url = `${gateway}${cid}/manifest.json`
@@ -211,16 +239,14 @@ async function fetchAndVerify(
         headers: { Accept: 'application/json' },
       })
       if (!res.ok) continue
-
-      const bundle = (await res.json()) as SkillBundle
-      return bundle
+      return (await res.json()) as SkillBundle
     } catch (e) {
       console.warn(`Gateway ${gateway} failed:`, e)
       continue
     }
   }
 
-  throw new Error(`Failed to fetch CID ${cid} from all gateways`)
+  throw new Error(`Failed to fetch CID ${cid} via verified-fetch or any gateway`)
 }
 
 // -------------------------------------------------------------------------
