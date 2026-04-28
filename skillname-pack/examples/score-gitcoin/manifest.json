@@ -1,0 +1,48 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "score-gitcoin",
+  "ensName": "score.gitcoin.eth",
+  "version": "1.0.0",
+  "description": "One function: get a Gitcoin Passport trust score for an Ethereum address. Pure read-only, free.",
+  "author": "0x0000000000000000000000000000000000000000",
+  "createdAt": "2026-04-28T00:00:00Z",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "trust_score",
+      "description": "Returns the Gitcoin Passport score for the given address using the public Sybil-resistance scorer. Higher score = more verifiable identity stamps.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "Ethereum address to score"
+          },
+          "scorerId": {
+            "type": "integer",
+            "default": 335,
+            "description": "Public Passport scorer id (335 = Unique Humanity)"
+          }
+        },
+        "required": ["address"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "address": { "type": "string" },
+          "score": { "type": "string" },
+          "status": { "type": "string", "enum": ["DONE", "PROCESSING", "ERROR"] }
+        }
+      },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://api.passport.xyz/v2/stamps/{scorerId}/score/{address}",
+        "method": "GET"
+      }
+    }
+  ],
+  "trust": {
+    "ensip25": { "enabled": false }
+  }
+}

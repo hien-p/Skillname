@@ -1,0 +1,6 @@
+{
+  "kind": "local-handler",
+  "version": "1",
+  "language": "javascript",
+  "code": "(({ name }) => ({ greeting: `Hello, ${name}!` }))"
+}

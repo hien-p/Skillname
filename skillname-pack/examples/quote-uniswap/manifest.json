@@ -1,0 +1,48 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "quote-uniswap",
+  "ensName": "quote.uniswap.eth",
+  "version": "1.0.0",
+  "description": "One function: get a USD-denominated price quote for an ERC-20 token. Pure read-only, free.",
+  "author": "0x0000000000000000000000000000000000000000",
+  "createdAt": "2026-04-28T00:00:00Z",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "get_quote",
+      "description": "Returns the current USD price for a token by CoinGecko id (e.g. 'ethereum', 'usd-coin'). Free, public API, no auth.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "string",
+            "description": "Comma-separated CoinGecko coin ids",
+            "examples": ["ethereum", "ethereum,usd-coin,wrapped-bitcoin"]
+          },
+          "vs_currencies": {
+            "type": "string",
+            "description": "Comma-separated target currencies",
+            "default": "usd",
+            "examples": ["usd", "usd,eur"]
+          }
+        },
+        "required": ["ids"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
+      },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://api.coingecko.com/api/v3/simple/price",
+        "method": "GET"
+      }
+    }
+  ],
+  "trust": {
+    "ensip25": { "enabled": false }
+  }
+}
