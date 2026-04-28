@@ -23,14 +23,6 @@ The unit is atomic: **one ENS name → one callable function**. Owner of the ENS
 
 The wedge is **granularity**. Other ENS-AI projects map *agents* to ENS names; we map *functions* to names. An agent is just a manifest of imports.
 
-| Project | Their unit | skillname |
-|---|---|---|
-| MVR (Sui) | `@org/package` SuiNS | `skill.org.eth` ENS |
-| DoloX | agent has ENS | **skill** has ENS |
-| LPlens | one agent → many tools | **one ENS → one tool** |
-| AgentPassports | ENS verifies policy | ENS **is** callable |
-| npm | centralized registry | each function lives at its own ENS |
-
 No project in the 58-entry hackathon roster works at this granularity. This is the slot.
 
 ## Two-tier read
