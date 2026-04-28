@@ -4,7 +4,7 @@
 >
 > **What is built today:** see [`README.md`](../../README.md) and [`BUILD_PLAN.md`](../BUILD_PLAN.md). Schema, SDK, MCP bridge skeleton, reference manifest, ENSIP-25 + ERC-7930 helper, three execution types (local / http / keeperhub+x402) — these are real. Everything else here is the road past May 6.
 >
-> **Naming pivot:** this doc uses the `Agent Name Registry` framing with `agenthub.eth` example names and `agent.*` text records. The current codebase uses `manifest.eth` with `xyz.manifest.skill.*` text records. Post-hackathon, the call is option 2 (full pivot to this spec) or option 3 (cherry-pick dependency graph + Sessions API on top of current namespace). Decided after submission.
+> **Naming pivot:** this doc uses the `Agent Name Registry` framing with `agenthub.eth` example names and `agent.*` text records. The current codebase uses `skillname` with `xyz.manifest.skill.*` text records. Post-hackathon, the call is option 2 (full pivot to this spec) or option 3 (cherry-pick dependency graph + Sessions API on top of current namespace). Decided after submission.
 
 ---
 
@@ -103,7 +103,7 @@ The protocol publishes once at `protocol.eth`. Every MCP client — Claude Deskt
     }
   ],
   "trust": {
-    "source": "github.com/firstmovers/trading-agent",
+    "source": "github.com/hien-p/trading-agent",
     "audit": "ipfs://bafyaudit...",
     "attestation": "0xattest...",
     "ensip25": { "enabled": true },
@@ -356,7 +356,7 @@ Different terminal: `clawhub install agent-name-registry/trading-agent` → same
 Architecture diagram with sponsor logos lighting up: ENS → IPFS/Storacha → 0G → ERC-8004 → KeeperHub → x402 → Base.
 
 End card:
-- Repo: github.com/firstmovers/agent-name-registry
+- Repo: github.com/hien-p/agent-name-registry
 - Live demo: agentname.eth
 - Live session: agentname.eth/sessions/abc123
 - ENSIP draft: discuss.ens.domains/...

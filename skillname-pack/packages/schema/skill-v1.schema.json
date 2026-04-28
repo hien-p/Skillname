@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://manifest.eth/schemas/skill-v1.json",
-  "title": "manifest.eth Skill Bundle v1",
+  "title": "skillname Skill Bundle v1",
   "description": "Schema for an MCP-compatible skill bundle resolved via ENS text records",
   "type": "object",
   "required": ["name", "ensName", "version", "tools"],

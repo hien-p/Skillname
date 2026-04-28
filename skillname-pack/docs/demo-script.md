@@ -6,7 +6,7 @@
 
 ## Scene 1 — Hook (0:00–0:25)
 
-**Visual:** Title card "manifest.eth — ENS-native skill registry for AI agents" → cut to terminal showing 30+ MCP adapter file folders.
+**Visual:** Title card "skillname — ENS-native skill registry for AI agents" → cut to terminal showing 30+ MCP adapter file folders.
 
 **Narration:**
 > "Every AI-on-Ethereum project rewrites the same thing. A custom MCP adapter for Uniswap. Another for Aave. Another for ENS itself. N protocols times M agent frameworks equals adapter explosion. We end that tax. Watch."
@@ -15,7 +15,7 @@
 
 ## Scene 2 — Empty Claude (0:25–0:45)
 
-**Visual:** Claude Desktop with config showing only `manifest-eth` MCP server. Type "What tools do you have for Uniswap?" → Claude says it has none.
+**Visual:** Claude Desktop with config showing only `skillname` MCP server. Type "What tools do you have for Uniswap?" → Claude says it has none.
 
 **Narration:**
 > "Claude has zero protocol-specific tools. Just our bridge. Now I'll point Claude at an ENS name."
@@ -80,10 +80,10 @@ Claude calls `research_agent__contract_scan` → returns metadata + risk notes.
 
 ## Scene 7 — OpenClaw same skill (3:30–3:55)
 
-**Visual:** Different terminal. `clawhub install manifest-eth/research-agent`. Then `claw run` — same tools available.
+**Visual:** Different terminal. `clawhub install skillname/research-agent`. Then `claw run` — same tools available.
 
 **Narration:**
-> "Same bundle, different client. OpenClaw installs the manifest.eth skill from clawhub. The bundle is portable across MCP clients. Zero adapter code per protocol per framework."
+> "Same bundle, different client. OpenClaw installs the skillname skill from clawhub. The bundle is portable across MCP clients. Zero adapter code per protocol per framework."
 
 ---
 

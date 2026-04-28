@@ -22,7 +22,7 @@ Paste `research.agent.eth` → see all the same things the bridge sees (CID, ver
 | `/explorer/[ensName]` | Direct-link result page (e.g. `/explorer/research.agent.eth`) |
 | `/spec` | Renders the JSON Schema (read-only) for protocol authors who want to validate offline |
 
-The deep link at `/explorer/[ensName]` is the load-bearing one — it's what makes the URL bar itself a proof artifact (`manifest.eth.limo/explorer/research.agent.eth`) and makes results shareable in submission text.
+The deep link at `/explorer/[ensName]` is the load-bearing one — it's what makes the URL bar itself a proof artifact (`skillname.eth.limo/explorer/research.agent.eth`) and makes results shareable in submission text.
 
 ## Layout
 
@@ -30,7 +30,7 @@ Single column, `max-width: 800px`, top-to-bottom. ASCII for orientation only —
 
 ```
 ┌─────────────────────────────────────────┐
-│ manifest.eth                            │  ← header: logo + 1-line tagline
+│ skillname                            │  ← header: logo + 1-line tagline
 │ ENS-native skill registry for AI agents │
 ├─────────────────────────────────────────┤
 │ [ research.agent.eth ]   [ Resolve ]    │  ← search input + button
@@ -111,7 +111,7 @@ Every onchain or IPFS identifier is one-click copyable:
 - ENS name
 - Each text record value (raw)
 - Tool MCP names: the exact `<bundle.name>__<tool.name>` string Claude Desktop will use
-- A pre-filled `claude_desktop_config.json` snippet (just the `mcpServers.manifest-eth` block from the README — paste-ready)
+- A pre-filled `claude_desktop_config.json` snippet (just the `mcpServers.skillname` block from the README — paste-ready)
 
 ## "Open in Claude" CTA
 
@@ -126,9 +126,9 @@ This is the conversion event — from "I see the bundle in a webpage" to "I can 
 | | Choice | Reason |
 |---|---|---|
 | Framework | Next.js 15 App Router | Already on BUILD_PLAN; matches monorepo TS |
-| Resolution | `@manifest-eth/sdk` `resolveSkill()` in a **client component** | eth.limo deployment requires static export — server-side RPC won't survive. Use a public Alchemy/Infura RPC from the browser. |
+| Resolution | `@skillname/sdk` `resolveSkill()` in a **client component** | eth.limo deployment requires static export — server-side RPC won't survive. Use a public Alchemy/Infura RPC from the browser. |
 | Styling | Tailwind | No shadcn for v0 — too much setup; reach for it only if a date picker / combobox is actually needed (it isn't here) |
-| Deploy | Vercel as primary; static export → IPFS pin → ENS `contenthash` for `manifest.eth.limo` mirror | eth.limo gives a free public surface at `manifest.eth.limo` — that's the demo URL |
+| Deploy | Vercel as primary; static export → IPFS pin → ENS `contenthash` for `skillname.eth.limo` mirror | eth.limo gives a free public surface at `skillname.eth.limo` — that's the demo URL |
 
 The fact that the same SDK runs in the browser is itself a small proof point: it shows the resolution pipeline isn't backend-locked.
 
@@ -136,15 +136,15 @@ The fact that the same SDK runs in the browser is itself a small proof point: it
 
 | Day | Deliverable |
 |---|---|
-| D5 | "Hello manifest.eth" — header + search input deployed on Vercel; button does nothing yet. Establishes the route shape and that deploys work. |
+| D5 | "Hello skillname" — header + search input deployed on Vercel; button does nothing yet. Establishes the route shape and that deploys work. |
 | D7 | Resolution wired: paste a name → display result card with raw JSON dump (ugly is fine; correctness over polish) |
 | D10 | Final polish: tools list with execution pills, trust section with verified badge, deep links to ENS app + Etherscan + gateway, Open-in-Claude CTA |
-| D11 | eth.limo deployment: static export → IPFS pin → set ENS `contenthash` on `manifest.eth` |
+| D11 | eth.limo deployment: static export → IPFS pin → set ENS `contenthash` on `skillname` |
 
 Don't try to ship D10 polish before resolution works end-to-end. Ugly-but-correct beats pretty-but-broken.
 
 ## Demo integration (optional scene 4 swap)
 
-Currently `demo-script.md` scene 4 shows ENS app + Etherscan tabs. If the explorer is solid by D10 EOD, swap one tab for `manifest.eth.limo/explorer/research.agent.eth` — same content, branded, makes the URL bar itself part of the proof.
+Currently `demo-script.md` scene 4 shows ENS app + Etherscan tabs. If the explorer is solid by D10 EOD, swap one tab for `skillname.eth.limo/explorer/research.agent.eth` — same content, branded, makes the URL bar itself part of the proof.
 
 If the explorer has any rendering bug at the D11 cold-test rehearsal, **fall back to ENS app + Etherscan only and don't show the explorer in the recorded demo**. It can still be in submission screenshots. A buggy explorer in the live demo is worse than no explorer.

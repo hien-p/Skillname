@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# manifest.eth — Day 1 setup script
+# skillname — Day 1 setup script
 # Run from a fresh directory: ./setup-day1.sh
 # Prereqs: node 20+, pnpm 9+, gh CLI, foundry (cast)
 
 set -euo pipefail
 
-REPO_NAME="manifest-eth"
-GITHUB_ORG="${GITHUB_ORG:-firstmovers}"  # change to Jason's org or personal handle
+REPO_NAME="skillname"
+GITHUB_ORG="${GITHUB_ORG:-hien-p}"  # change to Jason's org or personal handle
 TEAM_NAME="${TEAM_NAME:-team-manifest}"
 
-echo "==> manifest.eth Day 1 setup"
+echo "==> skillname Day 1 setup"
 echo "    Repo: ${GITHUB_ORG}/${REPO_NAME}"
 echo ""
 
@@ -30,7 +30,7 @@ git init -b main
 # ---------------------------------------------------------------------------
 cat > package.json <<'EOF'
 {
-  "name": "manifest-eth",
+  "name": "skillname",
   "private": true,
   "version": "0.0.1",
   "description": "ENS-native skill registry for AI agents",
@@ -39,8 +39,8 @@ cat > package.json <<'EOF'
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "dev:bridge": "pnpm --filter @manifest-eth/bridge dev",
-    "cli": "pnpm --filter @manifest-eth/cli exec manifest"
+    "dev:bridge": "pnpm --filter @skillname/bridge dev",
+    "cli": "pnpm --filter @skillname/cli exec skill"
   },
   "engines": { "node": ">=20" },
   "packageManager": "pnpm@9.12.0",
@@ -135,7 +135,7 @@ mkdir -p docs
 # ---------------------------------------------------------------------------
 cat > packages/schema/package.json <<'EOF'
 {
-  "name": "@manifest-eth/schema",
+  "name": "@skillname/schema",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",

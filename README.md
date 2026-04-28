@@ -1,9 +1,11 @@
-# manifest.eth
+# skillname
 
 > **ENS-native registry for AI agent skills.**
 > Resolve any ENS name into a verified MCP skill bundle and load tools dynamically. No custom adapters per protocol. No hard-coded endpoints.
 
 **Status:** ETHGlobal Open Agents · Apr 24 – May 6, 2026 · Targeting ENS (both tracks) + KeeperHub + 0G
+
+> *Project / repo / package = `skillname`. The on-the-wire spec it implements stays at `xyz.manifest.skill.*` ENS text records and the `https://manifest.eth/schemas/skill-v1.json` schema id — those are stable spec keys, decoupled from the registry's name.*
 
 ## Problem
 
@@ -46,7 +48,7 @@ ENS gives this four things a plain JSON registry doesn't:
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  MCP CLIENT (Claude Desktop / OpenClaw / Cursor)         │
-│  + manifest.eth Bridge                                   │
+│  + skillname Bridge                                      │
 └──────────────────────────────────────────────────────────┘
                   │
                   │ ① user: "Use research.agent.eth"
@@ -92,27 +94,28 @@ ENS gives this four things a plain JSON registry doesn't:
 
 ### Shipped
 
-- [x] **JSON Schema v1** — [`packages/schema/skill-v1.schema.json`](./manifest-eth-pack/packages/schema/skill-v1.schema.json)
+- [x] **JSON Schema v1** — [`packages/schema/skill-v1.schema.json`](./skillname-pack/packages/schema/skill-v1.schema.json)
   Full draft-07 schema. Bundle root requires `name` / `ensName` / `version` / `tools[]`. Three execution variants (`local` / `http` / `keeperhub`) discriminated via `oneOf`. Payment block (`x402` / `mpp`). Trust block (`ensip25` + `erc8004`).
 
-- [x] **SDK `resolveSkill()`** — [`packages/sdk/src/index.ts`](./manifest-eth-pack/packages/sdk/src/index.ts)
+- [x] **SDK `resolveSkill()`** — [`packages/sdk/src/index.ts`](./skillname-pack/packages/sdk/src/index.ts)
   Pure-TS resolver. Wraps viem's `getEnsText` against the Universal Resolver on mainnet/sepolia, fetches the bundle from public IPFS gateways (`w3s.link`, `ipfs.io`, `cloudflare-ipfs.com`), and runs ENSIP-25 verification including the **ERC-7930 interoperable-address encoder** (`encodeErc7930`). Exports typed surface: `SkillBundle`, `Tool`, `Execution`, `ResolveResult`.
 
-- [x] **MCP bridge skeleton** — [`packages/bridge/src/server.ts`](./manifest-eth-pack/packages/bridge/src/server.ts)
-  stdio MCP server. Two built-in tools — [`manifest_load`](./manifest-eth-pack/packages/bridge/src/server.ts) and `manifest_list_loaded`. In-memory bundle cache with 5-min TTL. Dynamic tool registration with `<bundle>__<tool>` namespacing on `ListTools`. Working `http` executor; `local` and `keeperhub` paths are stubbed with explicit TODOs marked by phase.
+- [x] **MCP bridge skeleton** — [`packages/bridge/src/server.ts`](./skillname-pack/packages/bridge/src/server.ts)
+  stdio MCP server. Two built-in tools — `manifest_load` and `manifest_list_loaded`. In-memory bundle cache with 5-min TTL. Dynamic tool registration with `<bundle>__<tool>` namespacing on `ListTools`. Working `http` executor; `local` and `keeperhub` paths are stubbed with explicit TODOs marked by phase.
 
-- [x] **Reference bundle manifest** — [`examples/research-agent/manifest.json`](./manifest-eth-pack/examples/research-agent/manifest.json)
+- [x] **Reference bundle manifest** — [`examples/research-agent/manifest.json`](./skillname-pack/examples/research-agent/manifest.json)
   Hand-authored bundle covering all three execution types in one file: `contract_scan` (local), `market_research` (http via CoinGecko), `execute_contract_call` (keeperhub + $0.05 USDC x402 on Base Sepolia). Includes a populated `trust.erc8004` block to drive the ENSIP-25 verification path end-to-end.
 
 - [x] **Plan + design docs**
-  - [`BUILD_PLAN.md`](./manifest-eth-pack/BUILD_PLAN.md) — 14-day plan, role split (Bridge / Execution / Identity-Storage), kill-criteria per checkpoint, prize alignment matrix
-  - [`docs/architecture.md`](./manifest-eth-pack/docs/architecture.md) — end-to-end sequence diagram with one column per component (User → Claude → Bridge → viem → IPFS → KeeperHub → Base) + component responsibility table
-  - [`docs/demo-script.md`](./manifest-eth-pack/docs/demo-script.md) — 4-minute, 8-scene recording script with per-beat narration and timing
-  - [`docs/explorer-spec.md`](./manifest-eth-pack/docs/explorer-spec.md) — D10 read-only web explorer spec: routes, layout, three-state verified badge, error states, tech-stack rationale
-  - [`FEEDBACK.md`](./manifest-eth-pack/FEEDBACK.md) — KeeperHub Builder Feedback Bounty skeleton (UX / bugs / docs / requests / what-worked sections)
+  - [`BUILD_PLAN.md`](./skillname-pack/BUILD_PLAN.md) — 14-day plan, role split (Bridge / Execution / Identity-Storage), kill-criteria per checkpoint, prize alignment matrix
+  - [`docs/architecture.md`](./skillname-pack/docs/architecture.md) — end-to-end sequence diagram with one column per component (User → Claude → Bridge → viem → IPFS → KeeperHub → Base) + component responsibility table
+  - [`docs/demo-script.md`](./skillname-pack/docs/demo-script.md) — 4-minute, 8-scene recording script with per-beat narration and timing
+  - [`docs/explorer-spec.md`](./skillname-pack/docs/explorer-spec.md) — D10 read-only web explorer spec: routes, layout, three-state verified badge, error states, tech-stack rationale
+  - [`docs/VISION.md`](./skillname-pack/docs/VISION.md) — post-hackathon target spec (Agent Name Registry framing, dependency graph, Sessions API)
+  - [`FEEDBACK.md`](./skillname-pack/FEEDBACK.md) — KeeperHub Builder Feedback Bounty skeleton
 
 - [x] **Project setup**
-  - [`setup-day1.sh`](./manifest-eth-pack/setup-day1.sh) — bootstrap script that expands the seed payload into a working pnpm monorepo with CI workflow scaffolded
+  - [`setup-day1.sh`](./skillname-pack/setup-day1.sh) — bootstrap script that expands the seed payload into a working pnpm monorepo with CI workflow scaffolded
   - [`how_to_contributing.md`](./how_to_contributing.md) — branch workflow (`main` ↔ production, `staging` ↔ testnet, `feature/*`, `hotfix/*` with back-merge rule)
   - [`CLAUDE.md`](./CLAUDE.md) — orientation for contributors using Claude Code in this repo
 
@@ -120,44 +123,32 @@ ENS gives this four things a plain JSON registry doesn't:
 
 #### MVP demo-able
 
-- [ ] Schema validator wired into SDK — the ajv import in [`packages/sdk/src/index.ts`](./manifest-eth-pack/packages/sdk/src/index.ts) lines 143–144 is currently commented out
+- [ ] Schema validator wired into SDK — the ajv import in [`packages/sdk/src/index.ts`](./skillname-pack/packages/sdk/src/index.ts) lines 143–144 is currently commented out
 - [ ] CID hash verification via `@helia/verified-fetch` — current implementation uses plain gateway fetch
-- [ ] CLI: `manifest publish | resolve | verify` — [`packages/cli/src/commands/`](./manifest-eth-pack/packages/cli/) exists but is empty
+- [ ] CLI: `skill publish | resolve | verify` — [`packages/cli/`](./skillname-pack/packages/cli/) exists but `src/commands/` is empty
 - [ ] Storacha publish pipeline end-to-end — `w3up-client` upload + ENS `setText` orchestration
-- [ ] Reference bundle tool / prompt / example files — only [`manifest.json`](./manifest-eth-pack/examples/research-agent/manifest.json) exists; no executable handlers under `tools/`, no markdown under `prompts/`
+- [ ] Reference bundle tool / prompt / example files — only [`manifest.json`](./skillname-pack/examples/research-agent/manifest.json) exists; no executable handlers under `tools/`, no markdown under `prompts/`
 - [ ] ENS test name registered on Sepolia + text records set
 - [ ] Bridge running live in Claude Desktop — **D5 kill-criterion** per BUILD_PLAN
 
 #### Onchain execution + identity
 
-- [ ] KeeperHub execution adapter — `executeKeeperHub` in [`packages/bridge/src/server.ts`](./manifest-eth-pack/packages/bridge/src/server.ts) is currently a stub
+- [ ] KeeperHub execution adapter — `executeKeeperHub` in [`packages/bridge/src/server.ts`](./skillname-pack/packages/bridge/src/server.ts) is currently a stub
 - [ ] x402 payment flow — `@x402/hono` middleware + CDP facilitator + EIP-3009 USDC `transferWithAuthorization` + retry-with-`X-PAYMENT` flow
 - [ ] ERC-8004 Identity NFT mint script + `agent-registration[<erc7930>][<agentId>]` text record set on the test ENS name
 - [ ] ENSIP-25 verified-badge end-to-end — bundle declares trust → SDK reads binding → bridge surfaces ✓ in `manifest_load` response
-- [ ] Read-only web explorer — per [`docs/explorer-spec.md`](./manifest-eth-pack/docs/explorer-spec.md)
+- [ ] Read-only web explorer — per [`docs/explorer-spec.md`](./skillname-pack/docs/explorer-spec.md)
 
 #### Polish + record
 
-- [ ] OpenClaw skill packaging — `clawhub install manifest-eth/research-agent` working; same bundle visible in two MCP clients
+- [ ] OpenClaw skill packaging — `clawhub install skillname/research-agent` working; same bundle visible in two MCP clients
 - [ ] 0G Storage dual-pin in publish pipeline + `xyz.manifest.skill.0g` text record
-- [ ] eth.limo deployment of explorer — static export → IPFS pin → ENS `contenthash` set on `manifest.eth`
+- [ ] eth.limo deployment of explorer — static export → IPFS pin → ENS `contenthash` set on `skillname.eth`
 - [ ] Demo recording — code freeze May 5 6PM, 5 takes, upload unlisted to YouTube and embed in submission
 
 ### Out of scope
 
-Subname-per-version locking (NameWrapper fuses), wildcard resolver for fleets (ENSIP-10), full ERC-8004 reputation aggregation, marketplace / discovery UI, AXL P2P discovery, dependency-graph walking, live observability Sessions API, ENSIP draft submission — all deferred to post-hackathon.
-
-## Prize alignment
-
-| Sponsor | Track | $ | Where in repo |
-|---|---|---|---|
-| ENS | Best AI Agent Integration | $2,500 | [`packages/bridge`](./manifest-eth-pack/packages/bridge/) + [`packages/sdk`](./manifest-eth-pack/packages/sdk/), demo scene 3 |
-| ENS | Most Creative Use | $2,500 | ENSIP-25 binding (`encodeErc7930` in [`sdk/index.ts`](./manifest-eth-pack/packages/sdk/src/index.ts)), text records as registry, draft ENSIP post-hackathon |
-| KeeperHub | Best Use | $2,500 | `executeKeeperHub` adapter in [`bridge/server.ts`](./manifest-eth-pack/packages/bridge/src/server.ts), OpenClaw packaging, x402 middleware, demo scene 6 |
-| KeeperHub | Builder Feedback Bounty | $250 | [`FEEDBACK.md`](./manifest-eth-pack/FEEDBACK.md) |
-| 0G | Agent Framework, Tooling & Core Extensions | $2,500 | manifest spec as framework, 0G dual-pin in publish pipeline + `xyz.manifest.skill.0g` text record |
-
-Total addressable: ~$10,250. Realistic top-3 in 1–2 tracks: $3K–$6K expected.
+Subname-per-version locking (NameWrapper fuses), wildcard resolver for fleets (ENSIP-10), full ERC-8004 reputation aggregation, marketplace / discovery UI, AXL P2P discovery, dependency-graph walking, live observability Sessions API, ENSIP draft submission — all deferred to post-hackathon. Direction (full pivot to VISION.md spec vs cherry-pick) decided after the May 6 submission.
 
 ## License
 

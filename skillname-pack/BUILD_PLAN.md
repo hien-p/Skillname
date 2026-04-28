@@ -1,4 +1,4 @@
-# manifest.eth — Full Build Plan (Team 3+, Aggressive, Apr 24 → May 6)
+# skillname — Full Build Plan (Team 3+, Aggressive, Apr 24 → May 6)
 
 > **Locked config:** Team 3 · Aggressive risk · Storacha primary + 0G dual-pin · Target $10K+ across ENS (both) + KeeperHub + 0G, with Gensyn AXL or Uniswap as D11+ stretch.
 
@@ -42,7 +42,7 @@ Everyone contributes. **Kill-criteria at D5 EOD: Claude Desktop loads tools from
 
 | Day | Jason (Lead/Bridge) | Dev B (Execution) | Dev C (Storage/Identity) |
 |---|---|---|---|
-| **D1 Apr 24** | Repo init, monorepo scaffold, push README + FEEDBACK skeleton, register `manifest.eth` (Sepolia) | KeeperHub account + API key + hello-world MCP test on Base Sepolia | Storacha + 0G + CDP accounts; install w3up-client; test upload |
+| **D1 Apr 24** | Repo init, monorepo scaffold, push README + FEEDBACK skeleton, register `skillname` (Sepolia) | KeeperHub account + API key + hello-world MCP test on Base Sepolia | Storacha + 0G + CDP accounts; install w3up-client; test upload |
 | **D2 Apr 25** | Bridge: viem ENS resolver (`getEnsText`) + helia verified-fetch wrapper | KeeperHub MCP server local config; document tool surface in `EXECUTION.md` | Schema v1 written + validator + 3 fixture bundles + unit tests |
 | **D3 Apr 26** | Bridge: dynamic MCP tool registration framework | x402 facilitator setup with CDP; Hono wrapper PoC | Storacha publish pipeline (`manifest publish ./bundle name.eth`) |
 | **D4 Apr 27** | SDK package: `resolveSkill(ensName)` end-to-end; CLI `manifest resolve` | Begin keeperhub-paid wrapper service skeleton | 0G Storage adapter (parallel pin); CLI `manifest pack` |
@@ -62,7 +62,7 @@ Everyone contributes. **Kill-criteria at D5 EOD: Claude Desktop loads tools from
 
 | Day | Jason | Dev B | Dev C |
 |---|---|---|---|
-| **D11 May 4** | Architecture diagram final; demo script word-for-word | OpenClaw `clawhub install manifest-eth` working; FEEDBACK.md filled with KeeperHub items | 0G Storage dual-pin in publish pipeline; `xyz.manifest.skill.0g` text record |
+| **D11 May 4** | Architecture diagram final; demo script word-for-word | OpenClaw `clawhub install skillname` working; FEEDBACK.md filled with KeeperHub items | 0G Storage dual-pin in publish pipeline; `xyz.manifest.skill.0g` text record |
 | **D12 May 5** | **CODE FREEZE 6PM** · Demo recording (5 takes); upload to YouTube unlisted | Aggressive stretch: optional Uniswap V4 tool via KeeperHub workflow | iNFT (ERC-7857) optional mint of bundle; web explorer polish |
 
 ### Phase P3 — Submission (D13–D14)

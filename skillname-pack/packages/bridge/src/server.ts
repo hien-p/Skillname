@@ -1,5 +1,5 @@
 /**
- * @manifest-eth/bridge
+ * @skillname/bridge
  *
  * MCP stdio server that resolves ENS names into MCP tools dynamically.
  *
@@ -8,9 +8,9 @@
  *
  *   {
  *     "mcpServers": {
- *       "manifest-eth": {
+ *       "skillname": {
  *         "command": "npx",
- *         "args": ["-y", "@manifest-eth/bridge"]
+ *         "args": ["-y", "@skillname/bridge"]
  *       }
  *     }
  *   }
@@ -28,7 +28,7 @@ import {
   ListToolsRequestSchema,
   type Tool as MCPTool,
 } from '@modelcontextprotocol/sdk/types.js'
-import { resolveSkill, type ResolveResult, type Tool } from '@manifest-eth/sdk'
+import { resolveSkill, type ResolveResult, type Tool } from '@skillname/sdk'
 
 // -------------------------------------------------------------------------
 // State
@@ -49,7 +49,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000  // 5 min
 // -------------------------------------------------------------------------
 
 const server = new Server(
-  { name: 'manifest-eth', version: '0.0.1' },
+  { name: 'skillname', version: '0.0.1' },
   { capabilities: { tools: {} } }
 )
 
@@ -301,7 +301,7 @@ async function main() {
   const transport = new StdioServerTransport()
   await server.connect(transport)
   // stderr only — stdout is reserved for MCP protocol
-  console.error('manifest.eth bridge ready')
+  console.error('skillname bridge ready')
 }
 
 main().catch((e) => {

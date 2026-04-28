@@ -1,6 +1,6 @@
 # KeeperHub Builder Feedback
 
-> ETHGlobal Open Agents 2026 · manifest.eth team · Apr 24 – May 6, 2026
+> ETHGlobal Open Agents 2026 · skillname team · Apr 24 – May 6, 2026
 >
 > This document is maintained throughout the hackathon. Each entry is dated, specific, and actionable per KeeperHub's bounty criteria.
 
@@ -84,7 +84,7 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 **Tools used:** `execute_contract_call`, `execute_transfer` (and which workflow IDs)
 **Networks:** Base Sepolia (primary), Sepolia (test)
 **Payment integration:** x402 via `@x402/hono` middleware, CDP facilitator
-**Framework integration:** OpenClaw skill packaging (`clawhub install manifest-eth`)
+**Framework integration:** OpenClaw skill packaging (`clawhub install skillname`)
 **Total tx count during build:** [number]
 **Approximate hours integrating:** [number]
 
@@ -92,7 +92,7 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 
 ## Contact
 
-- **Team:** manifest.eth
-- **GitHub:** https://github.com/firstmovers/manifest-eth
-- **Demo:** https://manifest.eth.limo
-- **Lead:** Jason / @firstmovers (Discord)
+- **Team:** skillname
+- **GitHub:** https://github.com/hien-p/Skillname
+- **Demo:** https://skillname.eth.limo
+- **Lead:** Jason / @hien-p (Discord)

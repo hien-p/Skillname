@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-This workspace is **pre-bootstrap scaffolding**, not a built monorepo. Everything lives under `manifest-eth-pack/`, which is the seed payload for the real `manifest-eth/` repo. There is no `package.json`, `pnpm-lock.yaml`, or `node_modules` yet — running `setup-day1.sh` creates a sibling `manifest-eth/` directory with the workspace, CI, and `.env.example`, then optionally pushes to GitHub via `gh`. The script aborts if `manifest-eth/` already exists, so run it once from a clean parent directory.
+This workspace is **pre-bootstrap scaffolding**, not a built monorepo. Everything lives under `skillname-pack/`, which is the seed payload for the real `skillname/` repo. There is no `package.json`, `pnpm-lock.yaml`, or `node_modules` yet — running `setup-day1.sh` creates a sibling `skillname/` directory with the workspace, CI, and `.env.example`, then optionally pushes to GitHub via `gh`. The script aborts if `skillname/` already exists, so run it once from a clean parent directory.
 
-When working on the source files in `packages/`, treat them as authored-in-place ahead of the bootstrap: edit them here, and they will be carried into `manifest-eth/` once the monorepo is initialized (or copied manually per the script's "next steps" output).
+When working on the source files in `packages/`, treat them as authored-in-place ahead of the bootstrap: edit them here, and they will be carried into `skillname/` once the monorepo is initialized (or copied manually per the script's "next steps" output).
+
+**Project name vs. spec name:** the project / repo / package scope is **skillname**. The ENS text-record namespace it implements stays as `xyz.manifest.skill.*` because that's a stable spec key — skillname is the registry, "skill" is what gets registered. Don't rename the text-record keys or the schema `$id` URL (`https://manifest.eth/schemas/skill-v1.json`); both are part of the on-the-wire spec.
 
 ## Commit conventions
 
@@ -24,12 +26,12 @@ pnpm build                # tsc across all packages
 pnpm test                 # vitest across all packages
 pnpm lint                 # lint all packages
 pnpm dev:bridge           # run the MCP bridge locally (stdio)
-pnpm cli                  # invoke @manifest-eth/cli (manifest publish | resolve | verify)
+pnpm cli                  # invoke @skillname/cli (skill publish | resolve | verify)
 
 # Single-package operations
-pnpm --filter @manifest-eth/sdk test
-pnpm --filter @manifest-eth/bridge build
-pnpm --filter @manifest-eth/schema test -- <pattern>   # vitest pattern filter
+pnpm --filter @skillname/sdk test
+pnpm --filter @skillname/bridge build
+pnpm --filter @skillname/schema test -- <pattern>   # vitest pattern filter
 ```
 
 Required Node version: `>=20`. Package manager: `pnpm@9`.
@@ -40,7 +42,7 @@ Required Node version: `>=20`. Package manager: `pnpm@9`.
 
 ### Resolution pipeline (read this before touching the SDK or bridge)
 
-1. **ENS text records** (read by `@manifest-eth/sdk` `resolveSkill()`): `xyz.manifest.skill` → `ipfs://<cid>` (required), plus optional `.version`, `.schema`, `.execution`, `.0g`. The CID is fetched via public gateways (`w3s.link`, `ipfs.io`, `cloudflare-ipfs.com`); production should swap to `@helia/verified-fetch` for content-hash verification.
+1. **ENS text records** (read by `@skillname/sdk` `resolveSkill()`): `xyz.manifest.skill` → `ipfs://<cid>` (required), plus optional `.version`, `.schema`, `.execution`, `.0g`. The CID is fetched via public gateways (`w3s.link`, `ipfs.io`, `cloudflare-ipfs.com`); production should swap to `@helia/verified-fetch` for content-hash verification.
 2. **Bundle layout** (the IPFS CID resolves to a directory): `manifest.json` (root, schema-validated) + `tools/*.json` + `prompts/*.md` + `examples/*` + optional `errors.md`.
 3. **Schema validation** is gated by `packages/schema/skill-v1.schema.json` (JSON Schema draft-07). Bundle root requires `name`, `ensName`, `version`, `tools[]`. Each tool requires `name`, `description`, `inputSchema`, `execution`. The validator import in `sdk/src/index.ts` is currently commented out — wiring it up is part of finishing the SDK.
 4. **ENSIP-25 trust** (optional): if the bundle declares `trust.erc8004 = { registry: "eip155:<chainId>:<addr>", agentId }`, the SDK encodes the registry as ERC-7930 and reads the `agent-registration[<erc7930>][<agentId>]` text record. A value of `"1"` means the ENS name confirms ownership of the ERC-8004 Identity NFT (bidirectional binding). The `encodeErc7930()` helper in `packages/sdk/src/index.ts` is the canonical implementation; do not duplicate it.
@@ -63,24 +65,25 @@ When adding a new execution backend, extend the `Execution` union in `packages/s
 ### Repository layout
 
 ```
-manifest-eth-pack/
+skillname-pack/
 ├── packages/
 │   ├── schema/        # JSON Schema v1 (skill-v1.schema.json) + validator (planned)
 │   ├── sdk/           # resolveSkill(), verifyEnsip25(), encodeErc7930() — pure TS
-│   ├── bridge/        # MCP stdio server (consumes @manifest-eth/sdk)
-│   └── cli/           # `manifest publish | resolve | verify` — empty src/, planned
+│   ├── bridge/        # MCP stdio server (consumes @skillname/sdk)
+│   └── cli/           # `skill publish | resolve | verify` — empty src/, planned
 ├── examples/
 │   └── research-agent/
 │       ├── manifest.json        # Reference bundle: contract_scan (local), market_research (http), execute_contract_call (keeperhub + x402)
 │       ├── tools/ prompts/ examples/   # currently empty
 ├── docs/
 │   ├── architecture.md          # End-to-end sequence diagram + component table
-│   └── demo-script.md           # 4-min recorded demo (D12)
+│   ├── demo-script.md           # 4-min recorded demo (D12)
+│   └── VISION.md                # Post-hackathon target shape (Agent Name Registry framing)
 ├── scripts/                      # ensip25-bind.ts, 0g-pin.ts (planned)
 ├── BUILD_PLAN.md                # 14-day plan; ownership matrix; kill-criteria
 ├── FEEDBACK.md                  # KeeperHub bounty gate (must exist at repo root)
 ├── README.md                    # Public-facing, ENS text record convention table
-└── setup-day1.sh                # Creates the real ./manifest-eth/ monorepo
+└── setup-day1.sh                # Creates the real ./skillname/ monorepo
 ```
 
 `packages/cli/src/commands/` exists but is empty — the CLI is on the build plan but unimplemented. `apps/web/` is referenced in the README/build plan but not present in the seed payload yet.
@@ -103,6 +106,6 @@ A working bundle must:
 2. Use `name` matching `^[a-z0-9-]+$` and tool names matching `^[a-z][a-z0-9_]*$` — these become the `<bundle.name>__<tool.name>` MCP tool identifiers.
 3. Use `ensName` matching `^([a-z0-9-]+\.)+eth$`.
 4. Pin to IPFS (Storacha primary; 0G dual-pin via `xyz.manifest.skill.0g` text record; Pinata fallback).
-5. Set ENS text records: `xyz.manifest.skill = ipfs://<cid>`, `xyz.manifest.skill.version = <semver>`, `xyz.manifest.skill.schema = https://manifest.eth/schemas/skill-v1.json`. The CLI `manifest publish` will automate this once implemented.
+5. Set ENS text records: `xyz.manifest.skill = ipfs://<cid>`, `xyz.manifest.skill.version = <semver>`, `xyz.manifest.skill.schema = https://manifest.eth/schemas/skill-v1.json`. The CLI `skill publish` will automate this once implemented.
 
 The reference bundle at `examples/research-agent/manifest.json` is the canonical example covering all three execution types (`local`, `http`, `keeperhub` with x402 payment).

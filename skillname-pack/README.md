@@ -1,15 +1,15 @@
-# manifest.eth
+# skillname
 
 > ENS-native skill registry for AI agents. Resolve any ENS name into a verified, content-addressed MCP skill bundle and dynamically load tools — no custom adapters per protocol.
 
-[![CI](https://github.com/firstmovers/manifest-eth/actions/workflows/ci.yml/badge.svg)](https://github.com/firstmovers/manifest-eth/actions/workflows/ci.yml)
+[![CI](https://github.com/hien-p/Skillname/actions/workflows/ci.yml/badge.svg)](https://github.com/hien-p/Skillname/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## What is this
 
 Today, every AI agent framework rewrites adapter glue per protocol. One MCP adapter for Uniswap, another for Aave, another for ENS itself. **N protocols × M agent frameworks = adapter explosion.** Every agent team pays this tax.
 
-manifest.eth flips it. The protocol publishes a skill bundle once at `protocol.eth`. Every MCP client — Claude Desktop, OpenClaw, Cursor, custom — resolves the name and gets working tools. Adapter explosion collapses to N + M instead of N × M.
+skillname flips it. The protocol publishes a skill bundle once at `protocol.eth`. Every MCP client — Claude Desktop, OpenClaw, Cursor, custom — resolves the name and gets working tools. Adapter explosion collapses to N + M instead of N × M.
 
 ```
 research.agent.eth
@@ -23,7 +23,7 @@ research.agent.eth
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  AI CLIENT  (Claude Desktop / OpenClaw / Cursor)            │
-│  + manifest-eth MCP Bridge                                  │
+│  + skillname MCP Bridge                                  │
 └─────────────────────────────────────────────────────────────┘
                        │
                        │ ① resolve("research.agent.eth")
@@ -61,7 +61,7 @@ research.agent.eth
 
 ```bash
 # 1. Install
-pnpm add -g @manifest-eth/cli
+pnpm add -g @skillname/cli
 
 # 2. Init a bundle
 manifest init my-skill
@@ -86,9 +86,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "manifest-eth": {
+    "skillname": {
       "command": "npx",
-      "args": ["-y", "@manifest-eth/bridge"]
+      "args": ["-y", "@skillname/bridge"]
     }
   }
 }
@@ -149,14 +149,14 @@ This composes for free with ENS's existing primitives — no new contracts.
 ## Repository layout
 
 ```
-manifest-eth/
+skillname/
 ├── packages/
 │   ├── schema/           # JSON Schema v1 + validator
 │   ├── sdk/              # TS SDK: resolveSkill(), verifyEnsip25()
 │   ├── bridge/           # MCP stdio server (the magic)
 │   └── cli/              # `manifest publish | resolve | verify`
 ├── apps/
-│   └── web/              # manifest.eth landing + explorer
+│   └── web/              # skillname landing + explorer
 ├── examples/
 │   └── research-agent/   # Reference skill bundle
 ├── scripts/
@@ -186,7 +186,7 @@ pnpm dev:bridge       # run MCP bridge locally
 - [ ] Submit ENSIP draft for `xyz.manifest.skill.*` keys
 - [ ] Subname-per-version locking (NameWrapper fuses)
 - [ ] Wildcard resolver for fleets (ENSIP-10)
-- [ ] Indexer/explorer at https://manifest.eth.limo
+- [ ] Indexer/explorer at https://skillname.eth.limo
 
 ## License
 

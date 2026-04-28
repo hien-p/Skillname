@@ -1,10 +1,10 @@
 /**
- * @manifest-eth/sdk
+ * @skillname/sdk
  *
  * Core resolution: ENS name → text record → IPFS CID → verified bundle.
  *
  * Usage:
- *   import { resolveSkill } from '@manifest-eth/sdk'
+ *   import { resolveSkill } from '@skillname/sdk'
  *   const bundle = await resolveSkill('research.agent.eth')
  */
 
@@ -140,7 +140,7 @@ export async function resolveSkill(
   const bundle = await fetchAndVerify(cid, options)
 
   // 4. Validate against schema (lazy load to avoid hard dep at runtime)
-  // const { validate } = await import('@manifest-eth/schema')
+  // const { validate } = await import('@skillname/schema')
   // if (!validate(bundle)) throw new Error('Invalid bundle: ' + validate.errors)
 
   // 5. ENSIP-25 check (optional)
