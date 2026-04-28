@@ -21,24 +21,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        if: hashFiles('pnpm-lock.yaml') != ''
+        uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        if: hashFiles('pnpm-lock.yaml') != ''
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
       - name: Install dependencies
+        if: hashFiles('pnpm-lock.yaml') != ''
         run: pnpm install --frozen-lockfile
 
       - name: Build web
         run: |
-          if [ -d apps/web ]; then
+          if [ -f apps/web/package.json ] && [ -f pnpm-lock.yaml ]; then
             pnpm --filter @skillname/web build
           else
-            echo "::warning::apps/web does not exist yet — deploying placeholder"
+            echo "::warning::No buildable apps/web yet — deploying placeholder"
             mkdir -p apps/web/dist
             cat > apps/web/dist/index.html <<'HTML'
           <!DOCTYPE html>
