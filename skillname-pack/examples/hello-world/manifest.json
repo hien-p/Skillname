@@ -1,0 +1,42 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "hello-world",
+  "ensName": "hello.world.eth",
+  "version": "1.0.0",
+  "description": "One function: greet a name. The smallest possible local-execution skill — useful as a smoke test for the bridge's local handler path.",
+  "author": "0x0000000000000000000000000000000000000000",
+  "createdAt": "2026-04-28T00:00:00Z",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "greet",
+      "description": "Returns 'Hello, {name}!' Runs locally inside the bridge process, no network, no payment.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Person or thing to greet"
+          }
+        },
+        "required": ["name"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "greeting": { "type": "string" }
+        },
+        "required": ["greeting"]
+      },
+      "execution": {
+        "type": "local",
+        "handler": "tools/greet.json"
+      }
+    }
+  ],
+  "trust": {
+    "ensip25": { "enabled": false }
+  }
+}
