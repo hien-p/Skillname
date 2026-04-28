@@ -1,0 +1,20 @@
+{
+  "name": "@skillname/bridge",
+  "version": "0.0.1",
+  "description": "MCP stdio bridge — resolves ENS names into MCP tools dynamically.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "skillname-bridge": "./dist/server.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/server.ts",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.1",
+    "@skillname/sdk": "workspace:*"
+  }
+}
