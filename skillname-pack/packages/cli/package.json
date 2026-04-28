@@ -1,0 +1,19 @@
+{
+  "name": "@skillname/cli",
+  "version": "0.0.1",
+  "description": "skill — publish, resolve, verify, lock skill bundles.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "skill": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@skillname/sdk": "workspace:*",
+    "viem": "^2.21.55"
+  }
+}

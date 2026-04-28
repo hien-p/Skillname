@@ -1,0 +1,51 @@
+name: Register skills on Sepolia
+
+on:
+  workflow_dispatch:
+    inputs:
+      parent:
+        description: "Parent ENS name on Sepolia (must be owned by SEPOLIA_PRIVATE_KEY)"
+        required: true
+        default: "skilltest.eth"
+      cids:
+        description: "Optional CIDs per slug, comma-separated (e.g. quote-uniswap=bafy...,swap-uniswap=bafy...)"
+        required: false
+        default: ""
+
+concurrency:
+  group: register-skills
+  cancel-in-progress: false
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Register
+        env:
+          SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+        run: |
+          ARGS="--parent ${{ inputs.parent }}"
+          if [ -n "${{ inputs.cids }}" ]; then
+            ARGS="$ARGS --cids ${{ inputs.cids }}"
+          fi
+          pnpm tsx scripts/register-skills.ts $ARGS
