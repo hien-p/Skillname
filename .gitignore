@@ -7,5 +7,8 @@ dist/
 .turbo
 coverage/
 
+# Claude Code internal artifacts (worktrees, sessions, etc.)
+.claude/
+
 # setup-day1.sh expands into a sibling directory with its own .git
-manifest-eth/
+skillname/
