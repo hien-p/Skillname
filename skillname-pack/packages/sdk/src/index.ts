@@ -168,11 +168,9 @@ export async function resolveSkill(
     )
   }
 
-  // 2. Strip ipfs:// prefix
-  const cid = cidRaw.startsWith('ipfs://') ? cidRaw.slice(7) : cidRaw
-
-  // 3. Fetch + verify
-  const bundle = await fetchAndVerify(cid, options)
+  // 2. Fetch + verify (URI scheme decides storage backend: ipfs:// vs 0g://)
+  const bundle = await fetchAndVerify(cidRaw, options)
+  const cid = cidRaw // preserved verbatim in ResolveResult for traceability
 
   // 4. Validate against schema v1
   const { valid, errors } = validateBundle(bundle)
@@ -225,10 +223,33 @@ async function getVerifiedFetch(): Promise<VerifiedFetchFn | null> {
   return _verifiedFetch
 }
 
+const OG_INDEXER_URL = 'https://indexer-storage-testnet-turbo.0g.ai'
+
 async function fetchAndVerify(
-  cid: string,
+  uri: string,
   options: ResolveOptions
 ): Promise<SkillBundle> {
+  // 0G storage: 0g://<rootHash> — fetched as a single file via the indexer.
+  if (uri.startsWith('0g://')) {
+    const root = uri.slice(5)
+    return fetchVia0G(root, options)
+  }
+
+  // IPFS: ipfs://<cid> — fetched as a directory, manifest.json at root.
+  const cid = uri.startsWith('ipfs://') ? uri.slice(7) : uri
+  return fetchViaIpfs(cid, options)
+}
+
+async function fetchVia0G(rootHash: string, _options: ResolveOptions): Promise<SkillBundle> {
+  const url = `${OG_INDEXER_URL}/file?root=${rootHash}`
+  const res = await fetch(url, { headers: { Accept: 'application/json' } })
+  if (!res.ok) {
+    throw new Error(`0G fetch failed for root ${rootHash}: HTTP ${res.status}`)
+  }
+  return (await res.json()) as SkillBundle
+}
+
+async function fetchViaIpfs(cid: string, options: ResolveOptions): Promise<SkillBundle> {
   // Default path: @helia/verified-fetch auto-verifies the CID content hash.
   if (!options.skipVerification) {
     try {
@@ -245,15 +266,12 @@ async function fetchAndVerify(
     }
   }
 
-  // Fallback: plain HTTP gateway fetch. Faster but does not verify the hash —
-  // only used when skipVerification is set, or when helia init / fetch failed.
+  // Fallback: plain HTTP gateway fetch. Faster but does not verify the hash.
   const gateways = options.ipfsGateways ?? DEFAULT_GATEWAYS
   for (const gateway of gateways) {
     try {
       const url = `${gateway}${cid}/manifest.json`
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json' },
-      })
+      const res = await fetch(url, { headers: { Accept: 'application/json' } })
       if (!res.ok) continue
       return (await res.json()) as SkillBundle
     } catch (e) {
