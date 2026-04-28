@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest.eth/schemas/skill-v1.json",
+  "title": "manifest.eth Skill Bundle v1",
+  "description": "Schema for an MCP-compatible skill bundle resolved via ENS text records",
+  "type": "object",
+  "required": ["name", "ensName", "version", "tools"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable skill name (slug-style)",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "ensName": {
+      "type": "string",
+      "description": "ENS name this bundle is published under",
+      "pattern": "^([a-z0-9-]+\\.)+eth$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "author": {
+      "type": "string",
+      "description": "Ethereum address of publisher",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "license": {
+      "type": "string",
+      "examples": ["MIT", "Apache-2.0", "ISC"]
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/Tool" }
+    },
+    "prompts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Relative paths to prompt files within the bundle"
+    },
+    "resources": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Resource" }
+    },
+    "examples": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Relative paths to example files"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^([a-z0-9-]+\\.)+eth$"
+      },
+      "description": "Other ENS-resolved manifests this bundle depends on"
+    },
+    "trust": {
+      "type": "object",
+      "properties": {
+        "ensip25": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        },
+        "erc8004": {
+          "type": "object",
+          "required": ["registry", "agentId"],
+          "properties": {
+            "registry": {
+              "type": "string",
+              "description": "CAIP-10 / EIP-7930 registry address",
+              "examples": ["eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"]
+            },
+            "agentId": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Tool": {
+      "type": "object",
+      "required": ["name", "description", "inputSchema", "execution"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "inputSchema": {
+          "type": "object",
+          "description": "JSON Schema for tool input"
+        },
+        "outputSchema": {
+          "type": "object",
+          "description": "JSON Schema for tool output (optional)"
+        },
+        "execution": { "$ref": "#/definitions/Execution" }
+      }
+    },
+    "Execution": {
+      "oneOf": [
+        { "$ref": "#/definitions/LocalExecution" },
+        { "$ref": "#/definitions/KeeperHubExecution" },
+        { "$ref": "#/definitions/HttpExecution" }
+      ]
+    },
+    "LocalExecution": {
+      "type": "object",
+      "required": ["type", "handler"],
+      "properties": {
+        "type": { "const": "local" },
+        "handler": {
+          "type": "string",
+          "description": "Path to handler file within the bundle"
+        }
+      }
+    },
+    "KeeperHubExecution": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "keeperhub" },
+        "workflowId": { "type": "string" },
+        "tool": {
+          "type": "string",
+          "enum": [
+            "execute_transfer",
+            "execute_contract_call",
+            "execute_check_and_execute",
+            "execute_workflow"
+          ]
+        },
+        "chainId": { "type": "integer" },
+        "payment": { "$ref": "#/definitions/Payment" }
+      }
+    },
+    "HttpExecution": {
+      "type": "object",
+      "required": ["type", "endpoint"],
+      "properties": {
+        "type": { "const": "http" },
+        "endpoint": { "type": "string", "format": "uri" },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE"],
+          "default": "POST"
+        },
+        "payment": { "$ref": "#/definitions/Payment" }
+      }
+    },
+    "Payment": {
+      "type": "object",
+      "required": ["protocol", "price", "token", "network"],
+      "properties": {
+        "protocol": { "type": "string", "enum": ["x402", "mpp"] },
+        "price": {
+          "type": "string",
+          "description": "Human-readable price",
+          "examples": ["$0.05", "0.05"]
+        },
+        "token": {
+          "type": "string",
+          "examples": ["USDC", "ETH"]
+        },
+        "network": {
+          "type": "string",
+          "examples": ["base", "base-sepolia", "ethereum"]
+        }
+      }
+    },
+    "Resource": {
+      "type": "object",
+      "required": ["name", "uri"],
+      "properties": {
+        "name": { "type": "string" },
+        "uri": { "type": "string", "format": "uri" },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

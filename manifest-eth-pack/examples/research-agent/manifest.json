@@ -1,0 +1,103 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "research-agent",
+  "ensName": "research.agent.eth",
+  "version": "1.0.0",
+  "description": "MCP-compatible research and smart contract analysis tools, ENS-resolved",
+  "author": "0x0000000000000000000000000000000000000000",
+  "createdAt": "2026-04-28T00:00:00Z",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "contract_scan",
+      "description": "Analyze a smart contract on a given chain and return high-level metadata and risk notes. Pure read-only — no funds at risk.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contractAddress": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "EVM contract address"
+          },
+          "chainId": {
+            "type": "integer",
+            "description": "EIP-155 chain ID",
+            "examples": [1, 8453, 84532]
+          }
+        },
+        "required": ["contractAddress", "chainId"]
+      },
+      "execution": {
+        "type": "local",
+        "handler": "tools/contract_scan.json"
+      }
+    },
+    {
+      "name": "market_research",
+      "description": "Pull token-level market summaries from public APIs. Free.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": { "type": "string", "description": "Ticker symbol, e.g. ETH, USDC" }
+        },
+        "required": ["symbol"]
+      },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://api.coingecko.com/api/v3/simple/price",
+        "method": "GET"
+      }
+    },
+    {
+      "name": "execute_contract_call",
+      "description": "Execute a safe smart contract call through KeeperHub. Pay-per-call ($0.05 USDC). Use this for any onchain write action.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "Target contract address"
+          },
+          "calldata": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]*$",
+            "description": "ABI-encoded calldata"
+          },
+          "chain": {
+            "type": "string",
+            "enum": ["base-sepolia", "base", "ethereum-sepolia"]
+          }
+        },
+        "required": ["target", "calldata", "chain"]
+      },
+      "execution": {
+        "type": "keeperhub",
+        "tool": "execute_contract_call",
+        "payment": {
+          "protocol": "x402",
+          "price": "$0.05",
+          "token": "USDC",
+          "network": "base-sepolia"
+        }
+      }
+    }
+  ],
+  "prompts": ["prompts/contract_scan.md"],
+  "resources": [
+    {
+      "name": "etherscan",
+      "uri": "https://api.etherscan.io/v2",
+      "description": "Etherscan v2 multichain API"
+    }
+  ],
+  "examples": ["examples/contract_scan.example.json"],
+  "dependencies": [],
+  "trust": {
+    "ensip25": { "enabled": true },
+    "erc8004": {
+      "registry": "eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "agentId": 42
+    }
+  }
+}

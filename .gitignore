@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.turbo
+coverage/
+
+# setup-day1.sh expands into a sibling directory with its own .git
+manifest-eth/
