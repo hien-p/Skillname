@@ -40,11 +40,14 @@ jobs:
 
       - name: Build web
         run: |
-          if [ -f apps/web/package.json ] && [ -f pnpm-lock.yaml ]; then
+          mkdir -p apps/web/dist
+          if [ -f apps/web/index.html ]; then
+            echo "Using committed apps/web/index.html"
+            cp apps/web/index.html apps/web/dist/index.html
+          elif [ -f apps/web/package.json ] && [ -f pnpm-lock.yaml ]; then
             pnpm --filter @skillname/web build
           else
-            echo "::warning::No buildable apps/web yet — deploying placeholder"
-            mkdir -p apps/web/dist
+            echo "::warning::No apps/web yet — deploying placeholder"
             cat > apps/web/dist/index.html <<'HTML'
           <!DOCTYPE html>
           <html lang="en">
