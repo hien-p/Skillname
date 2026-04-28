@@ -1,154 +1,131 @@
 # skillname
 
-> **ENS-native registry for AI agent skills.**
-> Resolve any ENS name into a verified MCP skill bundle and load tools dynamically. No custom adapters per protocol. No hard-coded endpoints.
+> **ENS is the import statement for AI.**
+> One ENS name = one AI skill. Compose agents by importing names.
 
-**Status:** ETHGlobal Open Agents · Apr 24 – May 6, 2026 · Targeting ENS (both tracks) + KeeperHub + 0G
+**Status:** ETHGlobal Open Agents · Apr 24 – May 6, 2026 · ENS (both tracks) + KeeperHub + 0G
 
-> *Project / repo / package = `skillname`. The on-the-wire spec it implements stays at `xyz.manifest.skill.*` ENS text records and the `https://manifest.eth/schemas/skill-v1.json` schema id — those are stable spec keys, decoupled from the registry's name.*
+---
 
-## Problem
-
-Today, an AI agent looks like this from the outside:
+## In one line
 
 ```
-0x91A3...f2c9
-https://random-api.com/mcp
-unknown owner
-unknown tools
-unknown reputation
+import quote from "quote.uniswap.eth"
 ```
 
-You don't know who controls it, what it can do, what it depends on, or whether it's trustworthy.
+That ENS name resolves to a manifest on IPFS describing **one function** — input schema, output schema, optional payment via x402, trust signals. Any MCP client (Claude Desktop, OpenClaw, Cursor) imports it dynamically. No custom adapter per protocol. No registry to register with. No API key.
 
-Worse — every AI agent framework rewrites adapter glue per protocol. One MCP adapter for Uniswap, another for Aave, another for ENS itself. **N protocols × M agent frameworks = adapter explosion.** Every agent team pays the tax.
+## In one paragraph
 
-Anthropic's MCP Registry solves this for the Web2 case via DNS/GitHub. That registry doesn't compose with onchain identity, NFT-based name ownership, or onchain payment rails — exactly the primitives Ethereum already has.
+The unit is atomic: **one ENS name → one callable function**. Owner of the ENS = author of the function. An agent is a list of imports. The same primitive scales from one tool to a recursive dependency graph, with version pinning, lockfiles, on-chain analytics from x402 payments, and tradable ownership via OpenSea — all without leaving ENS + IPFS.
 
-## Solution
+## Why this is unique
 
-Each protocol publishes one content-addressed MCP skill bundle to IPFS, then sets ENS text records pointing at the CID. Any MCP client (Claude Desktop, OpenClaw, Cursor, custom) resolves the ENS name, fetches the bundle, validates it against schema v1, and registers the bundle's tools dynamically. **N + M, not N × M.**
+The wedge is **granularity**. Other ENS-AI projects map *agents* to ENS names; we map *functions* to names. An agent is just a manifest of imports.
 
-```
-research.agent.eth
-  → ENS text record: xyz.manifest.skill = ipfs://bafy...
-  → bundle: manifest.json + tools/ + prompts/ + examples/
-  → MCP client loads tools (with optional ENSIP-25 + ERC-8004 verification)
-```
+| Project | Their unit | skillname |
+|---|---|---|
+| MVR (Sui) | `@org/package` SuiNS | `skill.org.eth` ENS |
+| DoloX | agent has ENS | **skill** has ENS |
+| LPlens | one agent → many tools | **one ENS → one tool** |
+| AgentPassports | ENS verifies policy | ENS **is** callable |
+| npm | centralized registry | each function lives at its own ENS |
 
-ENS gives this four things a plain JSON registry doesn't:
+No project in the 58-entry hackathon roster works at this granularity. This is the slot.
 
-- **Human-readable names** wallets already render (MetaMask, Rainbow, Etherscan)
-- **NFT-native ownership** that transfers cleanly — sell the name, sell the publishing authority
-- **ENSIP-25 binding** to ERC-8004 for verifiable agent identity
-- **Free `*.eth.limo` public surface** per name
+## Two-tier read
+
+**Cover** — for judges, Twitter, anyone meeting it the first time:
+> ENS is the import statement for AI.
+
+**Engine** — for engineers, builders, anyone digging deeper:
+> A package manager + analytics + marketplace + trust layer for AI skills, anchored on ENS. Like npm + crates.io + OpenSea, where every call is an on-chain x402 USDC payment. Granularity at the function level, not the agent level.
+
+Both are true. Cover is the headline; engine is what's underneath. Same product.
 
 ## How it works
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  MCP CLIENT (Claude Desktop / OpenClaw / Cursor)         │
-│  + skillname Bridge                                      │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  MCP CLIENT (Claude / OpenClaw / Cursor)    │
+│  + skillname Bridge                         │
+└─────────────────────────────────────────────┘
                   │
-                  │ ① user: "Use research.agent.eth"
+                  │ import quote.uniswap.eth
                   ▼
-┌──────────────────────────────────────────────────────────┐
-│  ENS Universal Resolver via viem                         │
-│   text(node, "xyz.manifest.skill")     → ipfs://bafy...  │
-│   text(node, "xyz.manifest.skill.version") → "1.0.0"     │
-│   text(node, "agent-registration[…][…]") → "1" (ENSIP-25)│
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  ENS Universal Resolver via viem             │
+│   text(node, "xyz.manifest.skill")          │
+│   text(node, "xyz.manifest.skill.imports")  │
+└─────────────────────────────────────────────┘
                   │
-                  │ ② fetch bundle + verify CID
+                  │ fetch + verify CID; walk imports
                   ▼
-┌──────────────────────────────────────────────────────────┐
-│  IPFS / 0G Storage (Storacha primary, 0G dual-pin)       │
-│  manifest.json + tools/ + prompts/ + examples/           │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  IPFS / 0G   manifest.json                   │
+│  one function: name, input, output, exec    │
+└─────────────────────────────────────────────┘
                   │
-                  │ ③ register MCP tools dynamically
+                  │ register single tool in MCP
                   ▼
-┌──────────────────────────────────────────────────────────┐
-│  Tool calls route by execution.type:                     │
-│   • local: handler in bundle                             │
-│   • http: direct fetch                                   │
-│   • keeperhub: KeeperHub MCP + optional x402 payment     │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  Tool calls route by execution.type:        │
+│   • local   • http                          │
+│   • keeperhub + x402 (paid → on-chain)      │
+└─────────────────────────────────────────────┘
 ```
 
-## ENS text record convention
+## Demo flow (4 min, 7 scenes)
 
-| Key | Value | Required |
-|---|---|---|
-| `xyz.manifest.skill` | `ipfs://bafy...` (CID of bundle) | yes |
-| `xyz.manifest.skill.version` | `1.0.0` (semver) | yes |
-| `xyz.manifest.skill.schema` | URI of the schema being validated against | yes |
-| `xyz.manifest.skill.execution` | `keeperhub` \| `local` \| `axl` | optional |
-| `xyz.manifest.skill.0g` | 0G blob ID for dual-pin redundancy | optional |
-| `agent-registration[<reg>][<id>]` | `1` (ENSIP-25 ↔ ERC-8004 binding) | optional |
+1. **Hook (0:00–0:25).** Open `skillname.eth/explorer` → grid of skills with live call counts. *"Each card is one ENS name, one function."*
+2. **Simple import (0:25–1:00).** In Claude Desktop: `Use quote.uniswap.eth` → one tool appears. Get a quote. *"One ENS name, one skill."*
+3. **Compose (1:00–1:45).** Manifest with `imports: [quote, swap, score]` → bridge walks the graph → 3 tools loaded. *"Imports compose. Lockfile pinned on-chain."*
+4. **Analytics (1:45–2:15).** Click `quote.uniswap.eth` in explorer → 12K calls / 30d, $621 revenue, top callers. *"Every call is an on-chain x402 tx — analytics can't be faked."*
+5. **Versioning (2:15–2:40).** Show `v1.quote.uniswap.eth` (NameWrapper-locked) vs `v2`. Lockfile pins exact resolution. *"npm semver, on-chain."*
+6. **Paid execution (2:40–3:20).** `swap.uniswap.eth` triggers x402 challenge → EIP-3009 USDC pay → KeeperHub swap → BaseScan tx confirmed.
+7. **Closing (3:20–4:00).** *"ENS is the import statement for AI."*
 
-`setText(...)` is gated by ENS Registry / NameWrapper ownership — only the ENS name owner can publish under that name. **No new auth contract needed.** Sell the ENS name on OpenSea, you sell the publishing authority. This is the same access pattern Sui's MVR uses, applied to 3.5M existing ENS names.
+Full script: [`docs/demo-script.md`](./skillname-pack/docs/demo-script.md).
 
 ## Deliverables
 
-### Shipped
+Full hierarchical checklist with sub-issues at [`docs/ROADMAP.md`](./skillname-pack/docs/ROADMAP.md). Summary:
 
-- [x] **JSON Schema v1** — [`packages/schema/skill-v1.schema.json`](./skillname-pack/packages/schema/skill-v1.schema.json)
-  Full draft-07 schema. Bundle root requires `name` / `ensName` / `version` / `tools[]`. Three execution variants (`local` / `http` / `keeperhub`) discriminated via `oneOf`. Payment block (`x402` / `mpp`). Trust block (`ensip25` + `erc8004`).
+### Tier 1 — Cover (MUST for demo)
+- [x] **Schema v1** — atomic skill manifest, three execution types, payment, trust ([skill-v1.schema.json](./skillname-pack/packages/schema/skill-v1.schema.json))
+- [x] **SDK `resolveSkill()`** — viem ENS read, IPFS gateway fetch, ENSIP-25 verify, ERC-7930 encoder ([sdk/src/index.ts](./skillname-pack/packages/sdk/src/index.ts))
+- [x] **MCP bridge skeleton** — stdio, dynamic registration, `http` executor working, `keeperhub` stubbed ([bridge/server.ts](./skillname-pack/packages/bridge/src/server.ts))
+- [x] **System dashboard** at [skillname.pages.dev](https://skillname.pages.dev) — Nothing-style bento UI
+- [ ] **Three reference skills** published on Sepolia: `quote.uniswap.eth`, `swap.uniswap.eth`, `score.gitcoin.eth`
+- [ ] **Bridge live in Claude Desktop** — D5 kill-criterion
+- [ ] **`skill.imports`** dependency walker + lockfile generator
+- [ ] **KeeperHub adapter** + **x402 payment** end-to-end on Base Sepolia
 
-- [x] **SDK `resolveSkill()`** — [`packages/sdk/src/index.ts`](./skillname-pack/packages/sdk/src/index.ts)
-  Pure-TS resolver. Wraps viem's `getEnsText` against the Universal Resolver on mainnet/sepolia, fetches the bundle from public IPFS gateways (`w3s.link`, `ipfs.io`, `cloudflare-ipfs.com`), and runs ENSIP-25 verification including the **ERC-7930 interoperable-address encoder** (`encodeErc7930`). Exports typed surface: `SkillBundle`, `Tool`, `Execution`, `ResolveResult`.
+### Tier 2 — Engine (HIGH for ENS Most Creative + 0G Framework)
+- [ ] **Skill Explorer** — search + skill detail + dep tree + analytics charts
+- [ ] **On-chain analytics indexer** — scan x402 USDC tx on Base, aggregate per skill
+- [ ] **Versioning + lockfile** — subname-as-version with NameWrapper fuses
+- [ ] **CLI** — `skill init | publish | resolve | verify | lock`
 
-- [x] **MCP bridge skeleton** — [`packages/bridge/src/server.ts`](./skillname-pack/packages/bridge/src/server.ts)
-  stdio MCP server. Two built-in tools — `manifest_load` and `manifest_list_loaded`. In-memory bundle cache with 5-min TTL. Dynamic tool registration with `<bundle>__<tool>` namespacing on `ListTools`. Working `http` executor; `local` and `keeperhub` paths are stubbed with explicit TODOs marked by phase.
+### Tier 3 — Stretch
+- [ ] **ERC-7857 iNFT** royalty wrapper for skill ownership
+- [ ] **OpenSea metadata** showing live call/revenue stats
+- [ ] **ENSIP draft** for `xyz.manifest.skill.*` namespace
 
-- [x] **Reference bundle manifest** — [`examples/research-agent/manifest.json`](./skillname-pack/examples/research-agent/manifest.json)
-  Hand-authored bundle covering all three execution types in one file: `contract_scan` (local), `market_research` (http via CoinGecko), `execute_contract_call` (keeperhub + $0.05 USDC x402 on Base Sepolia). Includes a populated `trust.erc8004` block to drive the ENSIP-25 verification path end-to-end.
+## Why this wins each track
 
-- [x] **Plan + design docs**
-  - [`BUILD_PLAN.md`](./skillname-pack/BUILD_PLAN.md) — 14-day plan, role split (Bridge / Execution / Identity-Storage), kill-criteria per checkpoint, prize alignment matrix
-  - [`docs/architecture.md`](./skillname-pack/docs/architecture.md) — end-to-end sequence diagram with one column per component (User → Claude → Bridge → viem → IPFS → KeeperHub → Base) + component responsibility table
-  - [`docs/demo-script.md`](./skillname-pack/docs/demo-script.md) — 4-minute, 8-scene recording script with per-beat narration and timing
-  - [`docs/explorer-spec.md`](./skillname-pack/docs/explorer-spec.md) — D10 read-only web explorer spec: routes, layout, three-state verified badge, error states, tech-stack rationale
-  - [`docs/VISION.md`](./skillname-pack/docs/VISION.md) — post-hackathon target spec (Agent Name Registry framing, dependency graph, Sessions API)
-  - [`FEEDBACK.md`](./skillname-pack/FEEDBACK.md) — KeeperHub Builder Feedback Bounty skeleton
+| Sponsor | Track | Where it lands |
+|---|---|---|
+| ENS | Best AI Integration | Bridge resolves ENS at runtime, no hard-coded values, demo proves it |
+| ENS | Most Creative Use | Granularity (function = ENS), subname access tokens, ENSIP-25 binding to ERC-8004, ENSIP draft |
+| KeeperHub | Best Use | x402 + KeeperHub adapter, OpenClaw packaging |
+| 0G | Framework | "Other builders publish skills here" — primitives others adopt; iNFT optional stretch |
 
-- [x] **Project setup**
-  - [`setup-day1.sh`](./skillname-pack/setup-day1.sh) — bootstrap script that expands the seed payload into a working pnpm monorepo with CI workflow scaffolded
-  - [`how_to_contributing.md`](./how_to_contributing.md) — branch workflow (`main` ↔ production, `staging` ↔ testnet, `feature/*`, `hotfix/*` with back-merge rule)
-  - [`CLAUDE.md`](./CLAUDE.md) — orientation for contributors using Claude Code in this repo
+## Live
 
-### Pending
-
-#### MVP demo-able
-
-- [ ] Schema validator wired into SDK — the ajv import in [`packages/sdk/src/index.ts`](./skillname-pack/packages/sdk/src/index.ts) lines 143–144 is currently commented out
-- [ ] CID hash verification via `@helia/verified-fetch` — current implementation uses plain gateway fetch
-- [ ] CLI: `skill publish | resolve | verify` — [`packages/cli/`](./skillname-pack/packages/cli/) exists but `src/commands/` is empty
-- [ ] Storacha publish pipeline end-to-end — `w3up-client` upload + ENS `setText` orchestration
-- [ ] Reference bundle tool / prompt / example files — only [`manifest.json`](./skillname-pack/examples/research-agent/manifest.json) exists; no executable handlers under `tools/`, no markdown under `prompts/`
-- [ ] ENS test name registered on Sepolia + text records set
-- [ ] Bridge running live in Claude Desktop — **D5 kill-criterion** per BUILD_PLAN
-
-#### Onchain execution + identity
-
-- [ ] KeeperHub execution adapter — `executeKeeperHub` in [`packages/bridge/src/server.ts`](./skillname-pack/packages/bridge/src/server.ts) is currently a stub
-- [ ] x402 payment flow — `@x402/hono` middleware + CDP facilitator + EIP-3009 USDC `transferWithAuthorization` + retry-with-`X-PAYMENT` flow
-- [ ] ERC-8004 Identity NFT mint script + `agent-registration[<erc7930>][<agentId>]` text record set on the test ENS name
-- [ ] ENSIP-25 verified-badge end-to-end — bundle declares trust → SDK reads binding → bridge surfaces ✓ in `manifest_load` response
-- [ ] Read-only web explorer — per [`docs/explorer-spec.md`](./skillname-pack/docs/explorer-spec.md)
-
-#### Polish + record
-
-- [ ] OpenClaw skill packaging — `clawhub install skillname/research-agent` working; same bundle visible in two MCP clients
-- [ ] 0G Storage dual-pin in publish pipeline + `xyz.manifest.skill.0g` text record
-- [ ] eth.limo deployment of explorer — static export → IPFS pin → ENS `contenthash` set on `skillname.eth`
-- [ ] Demo recording — code freeze May 5 6PM, 5 takes, upload unlisted to YouTube and embed in submission
-
-### Out of scope
-
-Subname-per-version locking (NameWrapper fuses), wildcard resolver for fleets (ENSIP-10), full ERC-8004 reputation aggregation, marketplace / discovery UI, AXL P2P discovery, dependency-graph walking, live observability Sessions API, ENSIP draft submission — all deferred to post-hackathon. Direction (full pivot to VISION.md spec vs cherry-pick) decided after the May 6 submission.
+- Production: [skillname.pages.dev](https://skillname.pages.dev)
+- Staging: [staging.skillname.pages.dev](https://staging.skillname.pages.dev)
+- Repo: this one ([github.com/hien-p/Skillname](https://github.com/hien-p/Skillname))
 
 ## License
 

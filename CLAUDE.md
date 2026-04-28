@@ -10,6 +10,18 @@ When working on the source files in `packages/`, treat them as authored-in-place
 
 **Project name vs. spec name:** the project / repo / package scope is **skillname**. The ENS text-record namespace it implements stays as `xyz.manifest.skill.*` because that's a stable spec key — skillname is the registry, "skill" is what gets registered. Don't rename the text-record keys or the schema `$id` URL (`https://manifest.eth/schemas/skill-v1.json`); both are part of the on-the-wire spec.
 
+## Conceptual model — atomic skill granularity
+
+The unit is **one ENS name = one atomic skill (function)**. An agent is a list of imports of these names. This is the wedge vs. competing ENS-AI projects, which map agents (not skills) to ENS names.
+
+When working in this codebase:
+- A bundle should describe **one** function in its `tools[]` array. Multi-tool bundles still parse, but the canonical pattern is one-function-per-bundle (e.g. `quote.uniswap.eth` → `get_quote`, `swap.uniswap.eth` → `execute_swap`).
+- Use **"skill"** not **"agent"** in user-facing copy. The framing is `import quote from "quote.uniswap.eth"`.
+- Don't conflate "skill" (the atomic ENS-named function) with "bundle" (the manifest+tools+prompts payload). The bundle *contains* the skill.
+- Composition happens via the `xyz.manifest.skill.imports` text record (roadmap #3): a manifest declares its imports, the bridge walks the graph, transitive tools are registered.
+
+See [`README.md`](./README.md) for the public framing and [`skillname-pack/docs/ROADMAP.md`](./skillname-pack/docs/ROADMAP.md) for the hierarchical build checklist.
+
 ## Commit conventions
 
 When committing or opening PRs against `hien-p/Skillname` (or any artifact that ends up public on this repo), **do not include `Co-Authored-By: Claude …` trailers, do not sign commits as "claude", and do not mention "Claude" or "Anthropic" in commit messages, PR titles, descriptions, or issue comments**. The visible author/contributor list must show only `hien-p`. This applies to every commit regardless of how the change was produced.
