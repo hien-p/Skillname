@@ -1,0 +1,50 @@
+{
+  "name": "skillname production response headers",
+  "kind": "zone",
+  "phase": "http_response_headers_transform",
+  "description": "Security + caching headers for the skillname production site (main branch).",
+  "rules": [
+    {
+      "expression": "true",
+      "description": "Set security headers on all responses",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "Strict-Transport-Security": {
+            "operation": "set",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          "X-Content-Type-Options": {
+            "operation": "set",
+            "value": "nosniff"
+          },
+          "X-Frame-Options": {
+            "operation": "set",
+            "value": "DENY"
+          },
+          "Referrer-Policy": {
+            "operation": "set",
+            "value": "strict-origin-when-cross-origin"
+          },
+          "Permissions-Policy": {
+            "operation": "set",
+            "value": "camera=(), microphone=(), geolocation=()"
+          }
+        }
+      }
+    },
+    {
+      "expression": "(starts_with(http.request.uri.path, \"/_next/static/\") or starts_with(http.request.uri.path, \"/assets/\") or http.request.uri.path matches \"\\.(?:js|css|woff2|svg|png|jpg|webp|avif)$\")",
+      "description": "Long cache for static assets (1 year, immutable)",
+      "action": "rewrite",
+      "action_parameters": {
+        "headers": {
+          "Cache-Control": {
+            "operation": "set",
+            "value": "public, max-age=31536000, immutable"
+          }
+        }
+      }
+    }
+  ]
+}
