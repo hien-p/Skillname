@@ -12,7 +12,10 @@ import { createPublicClient, http, type Address, type PublicClient } from 'viem'
 import { mainnet, sepolia } from 'viem/chains'
 import { normalize, namehash } from 'viem/ens'
 import { validate as validateBundle } from '@skillname/schema'
-import { createVerifiedFetch, type VerifiedFetch } from '@helia/verified-fetch'
+// @helia/verified-fetch is dynamically imported in getVerifiedFetch() —
+// it pulls libp2p webrtc with native bindings, so we only load it on the
+// first verified fetch call. If the dynamic import fails, the SDK falls
+// through to the public-gateway path silently.
 
 // -------------------------------------------------------------------------
 // Types
@@ -201,12 +204,23 @@ export async function resolveSkill(
 // Fetch + content-address verify
 // -------------------------------------------------------------------------
 
-// Lazy-init Helia verified-fetch — initializing it eagerly costs ~300ms and
-// loads native bindings, so we defer until the first resolution call.
-let _verifiedFetch: VerifiedFetch | null = null
-async function getVerifiedFetch(): Promise<VerifiedFetch> {
-  if (!_verifiedFetch) {
-    _verifiedFetch = await createVerifiedFetch()
+// Lazy + optional Helia verified-fetch. Dynamic import keeps the helia
+// dep — including its libp2p-webrtc native binding — out of the SDK's
+// load path. If helia is unavailable in the host (browser, edge worker,
+// or environment without native deps), verified fetch is skipped and
+// callers fall through to the public-gateway path.
+type VerifiedFetchFn = (resource: string | URL | Request) => Promise<Response>
+let _verifiedFetch: VerifiedFetchFn | null = null
+let _verifiedFetchAttempted = false
+async function getVerifiedFetch(): Promise<VerifiedFetchFn | null> {
+  if (_verifiedFetchAttempted) return _verifiedFetch
+  _verifiedFetchAttempted = true
+  try {
+    const mod = await import('@helia/verified-fetch')
+    _verifiedFetch = (await mod.createVerifiedFetch()) as VerifiedFetchFn
+  } catch (e) {
+    console.warn('verified-fetch unavailable, will use gateway:', (e as Error).message)
+    _verifiedFetch = null
   }
   return _verifiedFetch
 }
@@ -219,11 +233,13 @@ async function fetchAndVerify(
   if (!options.skipVerification) {
     try {
       const verifiedFetch = await getVerifiedFetch()
-      const response = await verifiedFetch(`ipfs://${cid}/manifest.json`)
-      if (response.ok) {
-        return (await response.json()) as SkillBundle
+      if (verifiedFetch) {
+        const response = await verifiedFetch(`ipfs://${cid}/manifest.json`)
+        if (response.ok) {
+          return (await response.json()) as SkillBundle
+        }
+        console.warn(`Verified fetch returned ${response.status}; falling back to gateway`)
       }
-      console.warn(`Verified fetch returned ${response.status}; falling back to gateway`)
     } catch (e) {
       console.warn('Verified fetch failed, falling back to gateway:', e)
     }
