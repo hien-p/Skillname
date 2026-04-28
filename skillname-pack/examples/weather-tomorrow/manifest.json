@@ -1,0 +1,53 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "weather-tomorrow",
+  "ensName": "weather.tomorrow.eth",
+  "version": "1.0.0",
+  "description": "One function: get the current and next-day weather forecast for a lat/lng. Free, no auth, via Open-Meteo.",
+  "author": "0x0000000000000000000000000000000000000000",
+  "createdAt": "2026-04-28T00:00:00Z",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "forecast",
+      "description": "Returns hourly + daily forecast for the given location. Free, public, no API key required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "Latitude in decimal degrees"
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "Longitude in decimal degrees"
+          },
+          "hourly": {
+            "type": "string",
+            "default": "temperature_2m,precipitation",
+            "description": "Comma-separated hourly variables"
+          },
+          "forecast_days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16,
+            "default": 2
+          }
+        },
+        "required": ["latitude", "longitude"]
+      },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "method": "GET"
+      }
+    }
+  ],
+  "trust": {
+    "ensip25": { "enabled": false }
+  }
+}
