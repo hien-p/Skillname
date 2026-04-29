@@ -18,7 +18,11 @@
   },
   "dependencies": {
     "@0glabs/0g-serving-broker": "^0.7.5",
-    "@modelcontextprotocol/sdk": "^0.6.1",
-    "@skillname/sdk": "workspace:*"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@skillname/sdk": "workspace:*",
+    "@x402/evm": "^2.11.0",
+    "@x402/fetch": "^2.11.0",
+    "dotenv": "^17.4.2",
+    "viem": "^2.21.55"
   }
 }
