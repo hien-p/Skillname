@@ -8,18 +8,28 @@
  * Env vars:
  *   OG_COMPUTE_PRIVATE_KEY  — EVM private key for the agent wallet on 0G chain
  *                             (needs a small amount of OG for ledger deposits)
+ *                             Falls back to SEPOLIA_PRIVATE_KEY — same account,
+ *                             same key works on both chains.
  *   OG_RPC_URL              — 0G chain RPC (default: https://evmrpc-testnet.0g.ai)
+ *
+ * NOTE: The @0glabs/0g-serving-broker ESM bundle (lib.esm) has a broken rollup
+ * chunk on Node ≥24. We load via createRequire to force the CJS build instead.
  */
 
-import {
-  createZGComputeNetworkBroker,
-  createReadOnlyInferenceBroker,
-} from '@0glabs/0g-serving-broker'
+import { createRequire } from 'module'
 import { ethers } from 'ethers'
 import type { Tool } from '@skillname/sdk'
 
+const _require = createRequire(import.meta.url)
+const {
+  createZGComputeNetworkBroker,
+  createReadOnlyInferenceBroker,
+} = _require('@0glabs/0g-serving-broker') as typeof import('@0glabs/0g-serving-broker')
+
 const OG_RPC = process.env.OG_RPC_URL ?? 'https://evmrpc-testnet.0g.ai'
-const OG_COMPUTE_PRIVATE_KEY = process.env.OG_COMPUTE_PRIVATE_KEY ?? ''
+// SEPOLIA_PRIVATE_KEY is the same EVM account — works on 0G Galileo too
+const OG_COMPUTE_PRIVATE_KEY =
+  process.env.OG_COMPUTE_PRIVATE_KEY ?? process.env.SEPOLIA_PRIVATE_KEY ?? ''
 
 // Shared read-only broker — lists providers without wallet. Initialized once.
 let _readonlyBroker: Awaited<ReturnType<typeof createReadOnlyInferenceBroker>> | null = null
@@ -55,8 +65,8 @@ export async function listProviders(): Promise<Array<{ address: string; model: s
 /**
  * Execute a skill tool on 0G Compute Network.
  *
- * If OG_COMPUTE_PRIVATE_KEY is set, uses the full broker with payment.
- * Otherwise falls back to direct HTTP if a public endpoint is discoverable.
+ * If OG_COMPUTE_PRIVATE_KEY (or SEPOLIA_PRIVATE_KEY) is set, uses the full
+ * broker with payment. Otherwise returns a config-missing error.
  */
 export async function executeVia0GCompute(
   tool: Tool,
@@ -64,14 +74,14 @@ export async function executeVia0GCompute(
 ): Promise<ComputeResult> {
   const exec = tool.execution as Extract<Tool['execution'], { type: '0g-compute' }>
   const providerAddress = exec.providerAddress
-  const model = exec.model ?? 'qwen3.6-plus'
+  const model = exec.model ?? 'qwen/qwen-2.5-7b-instruct'
   const systemPrompt = exec.systemPrompt
 
   const userMessage = buildUserMessage(args)
 
   if (!OG_COMPUTE_PRIVATE_KEY) {
     return {
-      text: `0G Compute not configured: set OG_COMPUTE_PRIVATE_KEY to execute skills on 0G Compute Network (provider: ${providerAddress}, model: ${model})`,
+      text: `0G Compute not configured: set SEPOLIA_PRIVATE_KEY or OG_COMPUTE_PRIVATE_KEY to execute skills on 0G Compute Network (provider: ${providerAddress}, model: ${model})`,
       provider: providerAddress,
       model,
       isError: true,

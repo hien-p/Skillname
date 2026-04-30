@@ -1,0 +1,43 @@
+name: E2E — 0G Compute inference
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [staging, main]
+    paths:
+      - 'skillname-pack/packages/bridge/src/0gcompute.ts'
+      - 'skillname-pack/packages/bridge/src/e2e-0gcompute.ts'
+      - 'skillname-pack/examples/infer-0g/**'
+
+concurrency:
+  group: e2e-0gcompute-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK (bridge depends on it)
+        run: pnpm --filter @skillname/sdk build
+
+      - name: Run 0G Compute e2e
+        env:
+          # OG_COMPUTE_PRIVATE_KEY falls back to SEPOLIA_PRIVATE_KEY in code —
+          # no separate secret needed; same EVM account works on Galileo chain.
+          SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
+          OG_RPC_URL: https://evmrpc-testnet.0g.ai
+        run: pnpm --filter @skillname/bridge e2e
