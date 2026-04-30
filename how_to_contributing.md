@@ -154,6 +154,63 @@ curl "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/rulesets" \
   -H "Authorization: Bearer $API_TOKEN" | jq '.result[] | {id, name, phase}'
 ```
 
+## Devlog (`/logs`) — every PR adds an entry
+
+We keep a public devlog at `<staging-url>/logs/` for the ETHGlobal Open Agents 2026 submission. **Every PR that lands on `staging` must add one entry.** This is part of code review — reviewers check that the entry is present before approving.
+
+**Live URLs:**
+- Staging: `https://staging.skillname.pages.dev/logs/`
+- Production: `https://skillname.pages.dev/logs/` (after `staging` → `main` promotion)
+
+**How to add an entry**
+
+Open `apps/web/logs/index.html` and find the section matching today's date (e.g. `<section id="day-7">`). If today doesn't have a section yet, create a new one **above** the most recent one — the page is newest-first.
+
+Paste this template inside the section, with the entry-card *above* any older entry-cards from the same day (so the day section is also newest-first):
+
+```html
+<article class="card entry">
+  <div class="hover-flag">PR #N</div>
+  <div class="entry-time">HH:MM · MERGED</div>
+  <div class="entry-title">PR title (or commit headline)</div>
+  <ul>
+    <li>What changed and why</li>
+    <li>Observable result (test passes, endpoint live, screenshot)</li>
+    <li>Follow-up if any (TODO, deferred work)</li>
+  </ul>
+  <div class="proof-label label">image (proof of work):</div>
+  <div class="proof-grid">
+    <div class="proof">screenshot or label</div>
+    <div class="proof">PR # / commit hash</div>
+  </div>
+  <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/N" target="_blank">view PR </a>
+</article>
+```
+
+**Reviewer checklist** — before approving a PR, confirm:
+
+- [ ] `apps/web/logs/index.html` has a new `<article class="card entry">` for this PR
+- [ ] `entry-time` matches the merge time, `hover-flag` matches the PR number
+- [ ] Bullets describe *what changed* + *observable result*, not just "added X"
+- [ ] If the PR has visible artifacts (screenshot, demo gif), drop them in `apps/web/logs/proof/` and replace one of the `<div class="proof">` placeholders with `<img src="proof/<file>">`
+
+**Adding a new day section** — if today doesn't have a `<section>` yet, copy this above the most recent day:
+
+```html
+<section class="day-section" id="day-N">
+  <div class="day-header">
+    <div class="day-num">DN</div>
+    <div class="day-name">one-line summary of the day</div>
+    <div class="label">YYYY·MM·DD · DAY · TODAY</div>
+  </div>
+  <!-- entry cards go here -->
+</section>
+```
+
+Then add `<a class="day-btn" href="#day-N"><span class="num">dN</span><span class="date">mmm dd</span></a>` to the top of the `<aside class="card day-rail">` block (newest-first).
+
+**Why entries are mandatory** — the `/logs` page is the artifact reviewers see when judging the hackathon. A merged PR without an entry is invisible to the prize committee. No entry → no merge.
+
 ## Rules
 
 - **Never push directly to `main` or `staging`.** Open a PR.
