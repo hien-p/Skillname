@@ -8,13 +8,16 @@ on:
         required: true
         default: "skilltest.eth"
       slug:
-        description: "Slug to pin (single bundle). Leave empty to pin all bundles."
+        description: "Slug to pin. Default = quote-uniswap (single, token-frugal). Empty = all."
         required: false
-        default: ""
+        default: "quote-uniswap"
 
 concurrency:
   group: pin-and-register
   cancel-in-progress: false
+
+env:
+  OG_CLI_VERSION: v1.3.0
 
 jobs:
   run:
@@ -31,17 +34,49 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: pnpm build
 
+      - name: Cache 0g-storage-client binary
+        id: cli-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/0g-storage-client
+          key: 0g-storage-client-${{ env.OG_CLI_VERSION }}-${{ runner.os }}
+
+      - name: Build 0g-storage-client (Go CLI)
+        if: steps.cli-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch ${{ env.OG_CLI_VERSION }} \
+            https://github.com/0glabs/0g-storage-client.git /tmp/0g-storage-client
+          mkdir -p ~/go/bin
+          cd /tmp/0g-storage-client && go build -o ~/go/bin/0g-storage-client
+
+      - name: Add CLI to PATH + verify
+        run: |
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+          ~/go/bin/0g-storage-client --version || ~/go/bin/0g-storage-client version || true
+
       - id: pin
+<<<<<<< Updated upstream
         name: Pin to 0G
         env:
           SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
           OG_RPC_URL: ${{ vars.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai' }}
+=======
+        name: Pin to 0G via Go CLI
+        env:
+          SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
+          OG_RPC_URL: ${{ vars.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai' }}
+          OG_INDEXER_URL: ${{ vars.OG_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai' }}
+>>>>>>> Stashed changes
         run: |
           if [ -n "${{ inputs.slug }}" ]; then
             pnpm tsx scripts/pin-to-0g.ts "${{ inputs.slug }}"
@@ -56,8 +91,13 @@ jobs:
         run: |
           ROOTS="${{ steps.pin.outputs.roots }}"
           if [ -z "$ROOTS" ]; then
+<<<<<<< Updated upstream
             echo "::warning::pin step did not produce any 0G roots; skipping register"
             exit 0
+=======
+            echo "::error::pin step produced no 0G roots — check operator balance + faucet"
+            exit 1
+>>>>>>> Stashed changes
           fi
           pnpm tsx scripts/register-skills.ts \
             --parent "${{ inputs.parent }}" \

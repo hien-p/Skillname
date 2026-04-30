@@ -126,7 +126,8 @@
       "oneOf": [
         { "$ref": "#/definitions/LocalExecution" },
         { "$ref": "#/definitions/KeeperHubExecution" },
-        { "$ref": "#/definitions/HttpExecution" }
+        { "$ref": "#/definitions/HttpExecution" },
+        { "$ref": "#/definitions/ZGComputeExecution" }
       ]
     },
     "LocalExecution": {
@@ -171,6 +172,27 @@
           "default": "POST"
         },
         "payment": { "$ref": "#/definitions/Payment" }
+      }
+    },
+    "ZGComputeExecution": {
+      "type": "object",
+      "required": ["type", "providerAddress"],
+      "properties": {
+        "type": { "const": "0g-compute" },
+        "providerAddress": {
+          "type": "string",
+          "description": "0G Compute provider EVM address",
+          "pattern": "^0x[a-fA-F0-9]{40}$"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name on the provider (e.g. qwen3.6-plus, GLM-5-FP8)",
+          "examples": ["qwen3.6-plus", "GLM-5-FP8"]
+        },
+        "systemPrompt": {
+          "type": "string",
+          "description": "Optional system prompt to prepend to user messages"
+        }
       }
     },
     "Payment": {

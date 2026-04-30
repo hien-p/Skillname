@@ -30,6 +30,15 @@ import {
   type Tool as MCPTool,
 } from '@modelcontextprotocol/sdk/types.js'
 import { resolveSkill, type ResolveResult, type Tool } from '@skillname/sdk'
+import { executeVia0GCompute, listProviders } from './0gcompute.js'
+
+// -------------------------------------------------------------------------
+// KeeperHub / x402 config — picked up at startup (Issue #13)
+// -------------------------------------------------------------------------
+
+const KEEPERHUB_API_KEY = process.env.KEEPERHUB_API_KEY ?? ''
+const AGENT_WALLET_PRIVATE_KEY = process.env.AGENT_WALLET_PRIVATE_KEY ?? ''
+const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS ?? ''
 
 // -------------------------------------------------------------------------
 // Structured stderr logging.
@@ -98,6 +107,13 @@ const SKILL_LIST_TOOL: MCPTool = {
   inputSchema: { type: 'object', properties: {} },
 }
 
+const ZG_LIST_PROVIDERS_TOOL: MCPTool = {
+  name: 'zg_list_providers',
+  description:
+    'List available AI inference providers on 0G Compute Network. Returns provider addresses, models (e.g. qwen3.6-plus, GLM-5-FP8), and endpoints. Use to discover providers before importing a 0g-compute skill.',
+  inputSchema: { type: 'object', properties: {} },
+}
+
 // -------------------------------------------------------------------------
 // Tool listing — built-ins + dynamically imported skills
 // -------------------------------------------------------------------------
@@ -116,7 +132,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   }
 
   return {
-    tools: [SKILL_IMPORT_TOOL, SKILL_LIST_TOOL, ...dynamicTools],
+    tools: [SKILL_IMPORT_TOOL, SKILL_LIST_TOOL, ZG_LIST_PROVIDERS_TOOL, ...dynamicTools],
   }
 })
 
@@ -187,6 +203,23 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     }
   }
 
+  // -- Built-in: list 0G Compute providers --
+  if (name === 'zg_list_providers') {
+    log.in('zg_list_providers')
+    try {
+      const providers = await listProviders()
+      if (providers.length === 0) {
+        return { content: [{ type: 'text', text: 'No 0G Compute providers found on testnet.' }] }
+      }
+      const lines = providers.map((p) => `${p.address}  model: ${p.model || '(unknown)'}  url: ${p.url || '(unknown)'}`)
+      log.ok(`found ${providers.length} 0G Compute provider(s)`)
+      return { content: [{ type: 'text', text: `0G Compute providers (${providers.length}):\n${lines.join('\n')}` }] }
+    } catch (e: any) {
+      log.err(`zg_list_providers failed: ${e.message}`)
+      return { content: [{ type: 'text', text: `Failed to list providers: ${e.message}` }], isError: true }
+    }
+  }
+
   // -- Dynamic: dispatch by namespace --
   const sep = name.indexOf('__')
   if (sep === -1) {
@@ -247,6 +280,8 @@ async function executeRouted(
       return executeKeeperHub(tool, args, skill)
     case 'http':
       return executeHttp(tool, args, skill)
+    case '0g-compute':
+      return execute0GCompute(tool, args)
     default:
       log.err(`unsupported execution: ${(tool.execution as any).type}`)
       return {
@@ -274,22 +309,42 @@ async function executeKeeperHub(tool: Tool, args: Record<string, unknown>, _skil
   // Issue #13: route to KeeperHub MCP + handle x402 challenge.
   const exec = tool.execution as Extract<Tool['execution'], { type: 'keeperhub' }>
 
-  if (exec.payment) {
+  const hasConfig = KEEPERHUB_API_KEY && AGENT_WALLET_PRIVATE_KEY && PAY_TO_ADDRESS
+  const target = exec.tool ?? exec.workflowId ?? '(unknown)'
+
+  if (!hasConfig) {
+    log.err(`KeeperHub env not configured (KEEPERHUB_API_KEY / AGENT_WALLET_PRIVATE_KEY / PAY_TO_ADDRESS)`)
     return {
       content: [
         {
           type: 'text',
-          text: `[#13] Would call KeeperHub ${exec.tool ?? exec.workflowId} with x402 payment ${exec.payment.price} ${exec.payment.token} on ${exec.payment.network}. Args: ${JSON.stringify(args)}`,
+          text: `KeeperHub not configured. Set KEEPERHUB_API_KEY, AGENT_WALLET_PRIVATE_KEY, PAY_TO_ADDRESS and restart the bridge.`,
+        },
+      ],
+      isError: true,
+    }
+  }
+
+  if (exec.payment) {
+    log.info(`x402 payment required: ${exec.payment.price} ${exec.payment.token} on ${exec.payment.network}`)
+    // TODO (Issue #13): EIP-3009 transferWithAuthorization → retry with X-PAYMENT header
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `[#13 wip] KeeperHub call to ${target} needs ${exec.payment.price} ${exec.payment.token} on ${exec.payment.network}. x402 flow implementation in progress. Args: ${JSON.stringify(args)}`,
         },
       ],
     }
   }
 
+  log.info(`routing to KeeperHub: ${target}`)
+  // TODO (Issue #13): call KeeperHub API with KEEPERHUB_API_KEY
   return {
     content: [
       {
         type: 'text',
-        text: `[#13 stub] Would call KeeperHub ${exec.tool ?? exec.workflowId}. Args: ${JSON.stringify(args)}`,
+        text: `[#13 wip] KeeperHub call to ${target}. Args: ${JSON.stringify(args)}`,
       },
     ],
   }
@@ -320,6 +375,17 @@ async function executeHttp(tool: Tool, args: Record<string, unknown>, _skill: Im
   return {
     content: [{ type: 'text', text }],
     isError: !res.ok,
+  }
+}
+
+async function execute0GCompute(tool: Tool, args: Record<string, unknown>) {
+  const exec = tool.execution as Extract<Tool['execution'], { type: '0g-compute' }>
+  log.info(`0G Compute → provider ${exec.providerAddress} model ${exec.model ?? 'qwen3.6-plus'}`)
+  const result = await executeVia0GCompute(tool, args)
+  log.ok(`0G Compute done (provider ${result.provider})`)
+  return {
+    content: [{ type: 'text', text: result.text }],
+    isError: result.isError,
   }
 }
 

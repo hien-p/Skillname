@@ -1,0 +1,37 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "infer-0g",
+  "ensName": "infer.skilltest.eth",
+  "version": "1.0.0",
+  "description": "AI inference via 0G Compute Network. Routes prompts to decentralized GPU providers running qwen/qwen-2.5-7b-instruct. No centralized API — inference is settled on 0G Chain.",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "infer",
+      "description": "Run AI inference on 0G Compute Network. Send a prompt, get a response from a decentralized GPU provider running qwen/qwen-2.5-7b-instruct. Useful for on-chain AI reasoning, code generation, or analysis tasks that require verifiable, censorship-resistant inference.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["prompt"],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "The prompt to send to the model",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "system": {
+            "type": "string",
+            "description": "Optional system prompt (overrides the skill default)",
+            "maxLength": 2000
+          }
+        }
+      },
+      "execution": {
+        "type": "0g-compute",
+        "providerAddress": "0xa48f01287233509FD694a22Bf840225062E67836",
+        "model": "qwen/qwen-2.5-7b-instruct",
+        "systemPrompt": "You are a helpful AI assistant running on 0G Compute Network — a decentralized, censorship-resistant inference layer. Answer concisely and accurately."
+      }
+    }
+  ]
+}
