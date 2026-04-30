@@ -40,8 +40,13 @@ jobs:
         run: |
           mkdir -p apps/web/dist
           if [ -f apps/web/index.html ]; then
-            echo "Using committed apps/web/index.html"
-            cp apps/web/index.html apps/web/dist/index.html
+            echo "Using committed apps/web/ static files"
+            rsync -a \
+              --exclude='dist' \
+              --exclude='node_modules' \
+              --exclude='package.json' \
+              --exclude='package-lock.json' \
+              apps/web/ apps/web/dist/
           elif [ -f apps/web/package.json ] && [ -f pnpm-lock.yaml ]; then
             pnpm --filter @skillname/web build
           else

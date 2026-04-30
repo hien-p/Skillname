@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skillname · logs</title>
+<meta name="description" content="Daily devlog for skillname — ENS-native registry for atomic AI skills. ETHGlobal Open Agents 2026.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #000;
+    --surface: #111;
+    --surface-raised: #1A1A1A;
+    --border: #222;
+    --border-visible: #333;
+    --text-disabled: #666;
+    --text-secondary: #999;
+    --text-primary: #E8E8E8;
+    --text-display: #FFF;
+    --accent-red: #D71921;
+    --utility-orange: #F26522;
+    --success: #4A9E5C;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: #000;
+    color: var(--text-primary);
+    font-family: 'Space Grotesk', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  body {
+    padding: 32px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 1120px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 18px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 18px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand a {
+    display: flex; align-items: center; gap: 12px;
+    color: inherit; text-decoration: none;
+  }
+
+  .brand-mark {
+    width: 22px; height: 22px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 1.5px;
+  }
+  .brand-mark span {
+    background: var(--text-primary);
+    border-radius: 50%;
+    opacity: 0.85;
+  }
+  .brand-mark span.off { background: transparent; }
+
+  .brand-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .brand-name b { color: var(--text-display); font-weight: 700; }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .meta-row b { color: var(--text-display); font-weight: 700; }
+  .meta-row a { color: inherit; text-decoration: none; }
+  .meta-row a:hover { color: var(--text-display); }
+  .meta-row .live {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--text-primary);
+  }
+  .live::before {
+    content: "";
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent-red);
+    animation: heartbeat 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  @keyframes heartbeat {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.85); }
+  }
+
+  /* ─── shared bento card ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(232,232,232,0.05) 50%, transparent 100%);
+    transform: translateX(-100%);
+    pointer-events: none;
+    transition: transform 700ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card:hover { border-color: var(--border-visible); }
+  .card:hover::after { transform: translateX(100%); }
+
+  .hover-flag {
+    position: absolute;
+    top: 14px; right: 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+  .card:hover .hover-flag { opacity: 1; }
+
+  .label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    color: var(--text-display);
+  }
+  .doto {
+    font-family: 'Doto', monospace;
+    font-weight: 400;
+    color: var(--text-display);
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+  }
+
+  /* ─── bento hero strip ─── */
+  .grid-hero {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 200px;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .span-2 { grid-column: span 2; }
+
+  .hero-today {
+    background:
+      radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0 / 14px 14px,
+      var(--surface);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .hero-today-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .hero-today-num {
+    font-family: 'Doto', monospace;
+    font-weight: 400;
+    font-size: 110px;
+    line-height: 0.85;
+    color: var(--text-display);
+    letter-spacing: -0.04em;
+  }
+  .hero-today-meta {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .hero-today-meta .v {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .hero-today-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+  }
+  .hero-today-foot .latest {
+    flex: 1;
+    min-width: 0;
+  }
+  .hero-today-foot .latest .hash {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-display);
+    letter-spacing: 0.02em;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .metric-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .metric-card .metric-value {
+    font-family: 'Doto', monospace;
+    font-size: 70px;
+    line-height: 0.9;
+    color: var(--text-display);
+    letter-spacing: -0.02em;
+  }
+  .metric-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 10px;
+  }
+  .metric-bar {
+    display: flex;
+    gap: 2px;
+    width: 100%;
+    margin-top: 14px;
+  }
+  .metric-bar .s {
+    flex: 1; height: 10px;
+    background: var(--border-visible);
+  }
+  .metric-bar .s.on { background: var(--text-display); }
+
+  /* ─── main two-col: day rail + stream ─── */
+  .grid-logs {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+
+  .day-rail {
+    position: sticky;
+    top: 32px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .day-rail .label { margin-bottom: 6px; padding: 0 6px; }
+
+  .day-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-family: 'Space Grotesk', sans-serif;
+    text-decoration: none;
+    padding: 12px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, border-color 0.18s;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .day-btn .num { font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+  .day-btn .date {
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-disabled);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .day-btn:hover {
+    background: var(--surface-raised);
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+  .day-btn.active {
+    background: var(--surface-raised);
+    color: var(--text-display);
+    border-color: var(--border-visible);
+  }
+  .day-btn.active .date { color: var(--text-secondary); }
+
+  /* ─── entry stream ─── */
+  .day-section { margin-bottom: 28px; scroll-margin-top: 24px; }
+  .day-section:last-child { margin-bottom: 8px; }
+
+  .day-header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 6px 8px 14px;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .day-header .day-num {
+    font-family: 'Doto', monospace;
+    font-size: 36px;
+    line-height: 0.9;
+    color: var(--text-display);
+    letter-spacing: -0.03em;
+  }
+  .day-header .day-name {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-display);
+    letter-spacing: -0.01em;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .entry {
+    margin-bottom: 10px;
+    padding: 24px;
+  }
+  .entry-time {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .entry-time::before {
+    content: "";
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--text-primary);
+  }
+  .entry-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 19px;
+    font-weight: 500;
+    color: var(--text-display);
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+    margin-bottom: 14px;
+  }
+  .entry-title code {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    color: var(--text-display);
+    background: var(--surface-raised);
+    padding: 1px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-visible);
+    font-weight: 400;
+  }
+
+  .entry ul {
+    list-style: none;
+    margin-bottom: 0;
+  }
+  .entry ul li {
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.65;
+    padding-left: 22px;
+    position: relative;
+    margin-bottom: 4px;
+  }
+  .entry ul li:last-child { margin-bottom: 0; }
+  .entry ul li::before {
+    content: '*';
+    position: absolute;
+    left: 6px; top: 0;
+    color: var(--text-disabled);
+    font-family: 'Space Mono', monospace;
+  }
+  .entry ul li code {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    background: var(--surface-raised);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--text-display);
+  }
+
+  .proof-label { margin-top: 18px; margin-bottom: 8px; }
+  .proof-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px;
+    max-width: 540px;
+  }
+  .proof {
+    aspect-ratio: 16/10;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-disabled);
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 8px;
+    transition: border-color 0.18s, color 0.18s;
+  }
+  .proof:hover { border-color: var(--border-visible); color: var(--text-secondary); }
+  .proof img, .proof video { width: 100%; height: 100%; object-fit: cover; }
+
+  .entry-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    text-decoration: none;
+    margin-top: 14px;
+    transition: color 0.15s;
+  }
+  .entry-link:hover { color: var(--text-display); }
+  .entry-link::after { content: '→'; }
+
+  .track-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .track-row .name { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text-primary); letter-spacing: 0.05em; text-transform: uppercase; }
+  .track-row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .track-row.warn .dot { background: var(--utility-orange); box-shadow: 0 0 6px var(--utility-orange); }
+
+  @media (max-width: 880px) {
+    .grid-hero { grid-template-columns: repeat(2, 1fr); grid-template-rows: 200px 200px; }
+    .span-2 { grid-column: span 2; }
+    .grid-hero > .metric-card:not(.span-2) { grid-column: span 1; }
+  }
+  @media (max-width: 720px) {
+    body { padding: 18px; }
+    .grid-hero { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .grid-hero > * { min-height: 160px; }
+    .span-2 { grid-column: 1; }
+    .grid-logs { grid-template-columns: 1fr; }
+    .day-rail {
+      position: static;
+      flex-direction: row;
+      overflow-x: auto;
+      padding: 12px;
+    }
+    .day-rail .label { display: none; }
+    .day-btn { flex: 0 0 auto; flex-direction: column; align-items: flex-start; gap: 2px; }
+    .day-btn .num { font-size: 16px; }
+    .hero-today-num { font-size: 80px; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+
+    <header class="topbar">
+      <div class="brand">
+        <a href="../index.html">
+          <div class="brand-mark">
+            <span></span><span class="off"></span><span></span><span class="off"></span><span></span>
+            <span class="off"></span><span></span><span></span><span></span><span class="off"></span>
+            <span></span><span></span><span class="off"></span><span></span><span></span>
+            <span class="off"></span><span></span><span></span><span></span><span class="off"></span>
+            <span></span><span class="off"></span><span></span><span class="off"></span><span></span>
+          </div>
+          <div class="brand-name">SKILLNAME · LOGS <b>v0.0.1</b></div>
+        </a>
+      </div>
+      <div class="meta-row">
+        <span>ETHGLOBAL OPEN AGENTS</span>
+        <span>D<b>7</b> / 13</span>
+        <a href="https://github.com/hien-p/Skillname" target="_blank">GITHUB</a>
+        <span class="live">BUILDING</span>
+      </div>
+    </header>
+
+    <!-- ─── HERO BENTO STRIP ─── -->
+    <section class="grid-hero">
+
+      <article class="card hero-today span-2">
+        <div class="hover-flag">TODAY · APR 30</div>
+        <div class="hero-today-head">
+          <div class="hero-today-num">D7</div>
+          <div class="hero-today-meta">
+            <div class="label">CURRENT DAY</div>
+            <div class="v">2026 · 04 · 30</div>
+            <div class="label" style="margin-top:8px">CODE FREEZE</div>
+            <div class="v">MAY 5 · 6PM</div>
+          </div>
+        </div>
+        <div class="hero-today-foot">
+          <div class="latest">
+            <div class="label">LATEST COMMIT</div>
+            <div class="hash">867824d · revert: restore 0G as primary</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card metric-card">
+        <div class="hover-flag">SHIPPED</div>
+        <div>
+          <div class="label">COMMITS</div>
+          <div class="metric-value">17</div>
+        </div>
+        <div class="metric-bar">
+          <span class="s on"></span><span class="s on"></span><span class="s on"></span>
+          <span class="s on"></span><span class="s on"></span><span class="s on"></span>
+          <span class="s on"></span><span class="s on"></span><span class="s on"></span>
+          <span class="s on"></span><span class="s on"></span><span class="s"></span>
+          <span class="s"></span>
+        </div>
+      </article>
+
+      <article class="card metric-card">
+        <div class="hover-flag">TRACKS</div>
+        <div>
+          <div class="label">SUBMISSIONS</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div class="track-row"><span class="name">ENS</span><span class="dot"></span></div>
+          <div class="track-row"><span class="name">KEEPERHUB</span><span class="dot"></span></div>
+          <div class="track-row"><span class="name">0G</span><span class="dot"></span></div>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ─── DAY RAIL + ENTRY STREAM ─── -->
+    <div class="grid-logs">
+
+      <aside class="card day-rail" id="dayRail">
+        <div class="label">DAYS</div>
+        <a class="day-btn active" href="#day-7"><span class="num">d7</span><span class="date">apr 30</span></a>
+        <a class="day-btn" href="#day-6"><span class="num">d6</span><span class="date">apr 29</span></a>
+        <a class="day-btn" href="#day-5"><span class="num">d5</span><span class="date">apr 28</span></a>
+      </aside>
+
+      <main>
+
+        <!-- ── DAY 7 ── -->
+        <section class="day-section" id="day-7">
+          <div class="day-header">
+            <div class="day-num">D7</div>
+            <div class="day-name">storage pivot · revert · env wiring</div>
+            <div class="label">2026·04·30 · WED · TODAY</div>
+          </div>
+
+          <article class="card entry">
+            <div class="hover-flag">DEVLOG</div>
+            <div class="entry-time">09:30 · STAGING</div>
+            <div class="entry-title">ship <code>/logs</code> devlog page + PR-to-logs convention</div>
+            <ul>
+              <li>Bento-style page at <code>/logs</code> matching the homepage's design system (Doto + Space Grotesk + Space Mono)</li>
+              <li>Sticky day rail with scroll-spy, newest-first ordering, real commit data</li>
+              <li><code>how_to_contributing.md</code> now requires every staging PR to add a <code>&lt;article class="card entry"&gt;</code> — reviewer checklist enforces it</li>
+              <li>Cloudflare deploy workflow now <code>rsync</code>s the whole <code>apps/web/</code> tree so multi-page routes ship</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">/logs page</div>
+              <div class="proof">contributing diff</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/commits/staging" target="_blank">view staging </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">867824D</div>
+            <div class="entry-time">09:04 · COMMIT</div>
+            <div class="entry-title">revert: restore 0G as primary, Storacha as fallback</div>
+            <ul>
+              <li>Reverted the full Storacha pivot — keeping 0G primary preserves the 0G Framework / Tooling prize track</li>
+              <li>Storacha keeps the IPFS fallback path so bundles resolve even if 0G is degraded</li>
+              <li><code>FEEDBACK.md</code> updated with the rationale for KeeperHub bounty review</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">commit 867824d</div>
+              <div class="proof">FEEDBACK.md diff</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/commit/867824d" target="_blank">view commit </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">5F1B56C</div>
+            <div class="entry-time">08:57 · COMMIT</div>
+            <div class="entry-title">storacha (IPFS) pivot + KeeperHub env vars</div>
+            <ul>
+              <li>Added <code>STORACHA_KEY</code> and <code>KEEPERHUB_API_KEY</code> to <code>.env.example</code></li>
+              <li>Bridge can now route <code>execute_contract_call</code> through KeeperHub MCP when configured</li>
+              <li>Tested local bridge boot — both creds load, bundle resolution survives 0G outages</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">.env.example</div>
+              <div class="proof">bridge boot log</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/commit/5f1b56c" target="_blank">view commit </a>
+          </article>
+        </section>
+
+        <!-- ── DAY 6 ── -->
+        <section class="day-section" id="day-6">
+          <div class="day-header">
+            <div class="day-num">D6</div>
+            <div class="day-name">CLI commands · x402 + KeeperHub MCP</div>
+            <div class="label">2026·04·29 · TUE</div>
+          </div>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #8</div>
+            <div class="entry-time">17:11 · MERGED</div>
+            <div class="entry-title">implement CLI <code>resolve</code>, <code>verify</code>, <code>init</code></div>
+            <ul>
+              <li><code>skill resolve &lt;ens&gt;</code> walks ENS text records → CID → bundle and prints tools</li>
+              <li><code>skill verify &lt;ens&gt;</code> re-runs schema validation + ENSIP-25 trust check</li>
+              <li><code>skill init</code> scaffolds a new bundle directory from the reference template</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #8</div>
+              <div class="proof">CLI demo run</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/8" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #4</div>
+            <div class="entry-time">16:02 · MERGED</div>
+            <div class="entry-title">wire x402 payment gateway + KeeperHub MCP client</div>
+            <ul>
+              <li>Bridge intercepts HTTP 402 from KeeperHub, signs EIP-3009 USDC <code>transferWithAuthorization</code>, retries with <code>X-PAYMENT</code></li>
+              <li>KeeperHub MCP client routes <code>execute_contract_call</code> + <code>execute_transfer</code></li>
+              <li>End-to-end paid execution path live on Sepolia</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #4</div>
+              <div class="proof">x402 trace</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/4" target="_blank">view PR </a>
+          </article>
+        </section>
+
+        <!-- ── DAY 5 ── -->
+        <section class="day-section" id="day-5">
+          <div class="day-header">
+            <div class="day-num">D5</div>
+            <div class="day-name">monorepo · bridge · 5 reference bundles · 0G primary</div>
+            <div class="label">2026·04·28 · MON</div>
+          </div>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #31</div>
+            <div class="entry-time">21:43 · MERGED</div>
+            <div class="entry-title">0G storage as primary backend (pin + resolve)</div>
+            <ul>
+              <li>Switched pin and resolve paths to <code>@0glabs/0g-ts-sdk</code></li>
+              <li>Bundles get content-hash verification on resolve via 0G</li>
+              <li>Falls back to Storacha gateway only when 0G is unreachable</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #31</div>
+              <div class="proof">0G resolve trace</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/31" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #29</div>
+            <div class="entry-time">20:04 · MERGED</div>
+            <div class="entry-title">bridge: rename built-ins to <code>skill_import</code> + smoke test</div>
+            <ul>
+              <li><code>manifest_load</code> → <code>skill_import</code> for clarity (one ENS = one skill framing)</li>
+              <li>Structured JSON logging on resolve / execute paths</li>
+              <li>Smoke test runs end-to-end: ENS → CID → bundle → tools listed in MCP client</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #29</div>
+              <div class="proof">smoke test log</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/29" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #25</div>
+            <div class="entry-time">18:14 · MERGED</div>
+            <div class="entry-title">monorepo bootstrap + helia + register-skills script</div>
+            <ul>
+              <li><code>setup-day1.sh</code> ran clean — workspace, CI, <code>.env.example</code> seeded</li>
+              <li>Schema validator wired into bridge boot path</li>
+              <li><code>register-skills</code> script publishes a bundle CID to ENS text records</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #25</div>
+              <div class="proof">workspace tree</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/25" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #23</div>
+            <div class="entry-time">17:17 · MERGED</div>
+            <div class="entry-title">five atomic reference skill bundles + per-issue test</div>
+            <ul>
+              <li>Reference bundles: <code>quote</code>, <code>swap</code>, <code>scan</code>, <code>market_research</code>, <code>execute_contract_call</code></li>
+              <li>Each manifest validates against <code>skill-v1.schema.json</code></li>
+              <li>Per-issue test script wired into <code>pnpm validate-skills</code></li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #23</div>
+              <div class="proof">5 manifests</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/23" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #9</div>
+            <div class="entry-time">16:12 · MERGED</div>
+            <div class="entry-title">pivot to "one ENS = one atomic skill" framing</div>
+            <ul>
+              <li>Re-framed README, schema, and example bundles around atomic-skill granularity</li>
+              <li>Wedge vs. competitors that map agents (not skills) to ENS names</li>
+              <li>Composition by <code>xyz.manifest.skill.imports</code> (transitive skill graph) — roadmap</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #9</div>
+              <div class="proof">README rewrite</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/9" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #6</div>
+            <div class="entry-time">15:40 · MERGED</div>
+            <div class="entry-title">Nothing-style system dashboard at <code>/</code></div>
+            <ul>
+              <li>Single-file static dashboard: clock, resolver, bundle integrity, glyph grid, metrics</li>
+              <li>Dark/light split-screen layer treatment</li>
+              <li>Doto + Space Grotesk + Space Mono — shared across <code>/</code> and <code>/logs</code></li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #6</div>
+              <div class="proof">/index.html</div>
+            </div>
+            <a class="entry-link" href="../index.html">view dashboard </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">CHORE</div>
+            <div class="entry-time">10:41 · INITIAL</div>
+            <div class="entry-title">repo bootstrap · README · VISION · Cloudflare deploy</div>
+            <ul>
+              <li>Initial commit — manifest.eth seed scaffolding (later renamed to skillname)</li>
+              <li>README + contributing guide + VISION.md (post-hackathon target spec)</li>
+              <li>Cloudflare Pages first deploy + branch protection wired</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">README.md</div>
+              <div class="proof">CF deploy</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/commits/main?since=2026-04-28&until=2026-04-28" target="_blank">view day's commits </a>
+          </article>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+<script>
+  // Scroll-spy: highlight the day in the rail that's currently in view
+  const buttons = document.querySelectorAll('.day-btn');
+  const byId = {};
+  buttons.forEach(b => byId[b.getAttribute('href').slice(1)] = b);
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        buttons.forEach(b => b.classList.remove('active'));
+        const btn = byId[e.target.id];
+        if (btn) btn.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+
+  document.querySelectorAll('.day-section').forEach(s => io.observe(s));
+</script>
+</body>
+</html>
