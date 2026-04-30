@@ -32,6 +32,14 @@ import {
 import { resolveSkill, type ResolveResult, type Tool } from '@skillname/sdk'
 
 // -------------------------------------------------------------------------
+// KeeperHub / x402 config — picked up at startup (Issue #13)
+// -------------------------------------------------------------------------
+
+const KEEPERHUB_API_KEY = process.env.KEEPERHUB_API_KEY ?? ''
+const AGENT_WALLET_PRIVATE_KEY = process.env.AGENT_WALLET_PRIVATE_KEY ?? ''
+const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS ?? ''
+
+// -------------------------------------------------------------------------
 // Structured stderr logging.
 // MCP uses stdout for the wire protocol — every diagnostic must go to stderr.
 // We prefix lines with arrows so the demo screen recording reads cleanly.
@@ -274,22 +282,42 @@ async function executeKeeperHub(tool: Tool, args: Record<string, unknown>, _skil
   // Issue #13: route to KeeperHub MCP + handle x402 challenge.
   const exec = tool.execution as Extract<Tool['execution'], { type: 'keeperhub' }>
 
-  if (exec.payment) {
+  const hasConfig = KEEPERHUB_API_KEY && AGENT_WALLET_PRIVATE_KEY && PAY_TO_ADDRESS
+  const target = exec.tool ?? exec.workflowId ?? '(unknown)'
+
+  if (!hasConfig) {
+    log.err(`KeeperHub env not configured (KEEPERHUB_API_KEY / AGENT_WALLET_PRIVATE_KEY / PAY_TO_ADDRESS)`)
     return {
       content: [
         {
           type: 'text',
-          text: `[#13] Would call KeeperHub ${exec.tool ?? exec.workflowId} with x402 payment ${exec.payment.price} ${exec.payment.token} on ${exec.payment.network}. Args: ${JSON.stringify(args)}`,
+          text: `KeeperHub not configured. Set KEEPERHUB_API_KEY, AGENT_WALLET_PRIVATE_KEY, PAY_TO_ADDRESS and restart the bridge.`,
+        },
+      ],
+      isError: true,
+    }
+  }
+
+  if (exec.payment) {
+    log.info(`x402 payment required: ${exec.payment.price} ${exec.payment.token} on ${exec.payment.network}`)
+    // TODO (Issue #13): EIP-3009 transferWithAuthorization → retry with X-PAYMENT header
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `[#13 wip] KeeperHub call to ${target} needs ${exec.payment.price} ${exec.payment.token} on ${exec.payment.network}. x402 flow implementation in progress. Args: ${JSON.stringify(args)}`,
         },
       ],
     }
   }
 
+  log.info(`routing to KeeperHub: ${target}`)
+  // TODO (Issue #13): call KeeperHub API with KEEPERHUB_API_KEY
   return {
     content: [
       {
         type: 'text',
-        text: `[#13 stub] Would call KeeperHub ${exec.tool ?? exec.workflowId}. Args: ${JSON.stringify(args)}`,
+        text: `[#13 wip] KeeperHub call to ${target}. Args: ${JSON.stringify(args)}`,
       },
     ],
   }
