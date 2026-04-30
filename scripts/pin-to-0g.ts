@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import 'dotenv/config'
 /**
  * Pin reference skill bundle manifest(s) to 0G Galileo testnet via the
  * official Go CLI (0g-storage-client). Wrapping the binary instead of

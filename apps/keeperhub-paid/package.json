@@ -1,0 +1,21 @@
+{
+  "name": "@skillname/keeperhub-paid",
+  "version": "0.0.1",
+  "description": "x402 payment gateway in front of KeeperHub MCP",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@x402/core": "^2.11.0",
+    "@x402/evm": "^2.11.0",
+    "@x402/hono": "^2.11.0",
+    "dotenv": "^17.4.2",
+    "hono": "^4.7.10"
+  }
+}
