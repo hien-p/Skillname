@@ -7,13 +7,16 @@
   "bin": {
     "skillname-bridge": "./dist/server.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@0glabs/0g-serving-broker": "^0.7.5",
     "@modelcontextprotocol/sdk": "^0.6.1",
     "@skillname/sdk": "workspace:*"
   }

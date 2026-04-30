@@ -65,6 +65,12 @@ export type Execution =
       payment?: Payment
     }
   | { type: 'http'; endpoint: string; method?: string; payment?: Payment }
+  | {
+      type: '0g-compute'
+      providerAddress: string
+      model?: string
+      systemPrompt?: string
+    }
 
 export interface Payment {
   protocol: 'x402' | 'mpp'
