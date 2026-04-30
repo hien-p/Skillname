@@ -1,4 +1,4 @@
-name: Pin to 0G + register skills on Sepolia
+name: Pin to Storacha + register skills on Sepolia
 
 on:
   workflow_dispatch:
@@ -38,15 +38,15 @@ jobs:
         run: pnpm build
 
       - id: pin
-        name: Pin to 0G
+        name: Pin to Storacha (IPFS)
         env:
-          SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
-          OG_RPC_URL: ${{ vars.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai' }}
+          W3_PRINCIPAL_KEY: ${{ secrets.W3_PRINCIPAL_KEY }}
+          W3_PROOF: ${{ secrets.W3_PROOF }}
         run: |
           if [ -n "${{ inputs.slug }}" ]; then
-            pnpm tsx scripts/pin-to-0g.ts "${{ inputs.slug }}"
+            pnpm tsx scripts/pin-to-storacha.ts "${{ inputs.slug }}"
           else
-            pnpm tsx scripts/pin-to-0g.ts
+            pnpm tsx scripts/pin-to-storacha.ts
           fi
 
       - name: Register subnames + set text records
@@ -54,11 +54,11 @@ jobs:
           SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
         run: |
-          ROOTS="${{ steps.pin.outputs.roots }}"
-          if [ -z "$ROOTS" ]; then
-            echo "::warning::pin step did not produce any 0G roots; skipping register"
+          CIDS="${{ steps.pin.outputs.cids }}"
+          if [ -z "$CIDS" ]; then
+            echo "::warning::pin step did not produce any CIDs; skipping register"
             exit 0
           fi
           pnpm tsx scripts/register-skills.ts \
             --parent "${{ inputs.parent }}" \
-            --roots "$ROOTS"
+            --cids "$CIDS"
