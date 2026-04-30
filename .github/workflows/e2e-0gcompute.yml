@@ -31,8 +31,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build SDK (bridge depends on it)
-        run: pnpm --filter @skillname/sdk build
+      - name: Build schema → sdk (bridge depends on both)
+        run: |
+          pnpm --filter @skillname/schema build
+          pnpm --filter @skillname/sdk build
 
       - name: Run 0G Compute e2e
         env:
