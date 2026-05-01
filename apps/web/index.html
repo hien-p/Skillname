@@ -6,9 +6,37 @@
 <title>skillname · system</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
+    /* ─── Antimetal — Style Reference ────────────────────────────────────
+       Dark mode token half. Palette source:
+       https://www.antimetal.com  (extracted via clearshot)
+       The bento's dark/light clip-path split mirrors Antimetal's hero→
+       light-canvas transition compressed onto a single screen.            */
+    --color-midnight-navy: #1b2540;
+    --color-deep-cosmos:   #001033;
+    --color-chartreuse-pulse: #d0f100;
+    --color-ice-veil:      #e0f6ff;
+    --color-ghost-canvas:  #f8f9fc;
+    --color-pure-surface:  #ffffff;
+    --color-slate-ink:     #6b7184;
+    --color-ash-medium:    #7c8293;
+    --color-storm-gray:    #596075;
+    --color-fog-border:    #b1b5c0;
+    --gradient-hero:       linear-gradient(180deg, #001033 0%, #0050f8 55%, #5fbdf7 100%);
+    --gradient-blue-glow:  radial-gradient(50% 50%, rgba(0, 128, 248, 0.32) 0%, rgba(95, 189, 247, 0.32) 20%, rgba(211, 239, 252, 0.32) 60%, rgba(248, 249, 252, 0) 100%);
+
+    --shadow-md:  rgba(0, 39, 80, 0.08) 0px 6px 16px -3px, rgba(0, 39, 80, 0.04) 0px 0px 0px 1px;
+    --shadow-xl:  rgba(0, 39, 80, 0.03) 0px 56px 72px -16px, rgba(0, 39, 80, 0.03) 0px 32px 32px -16px, rgba(0, 39, 80, 0.04) 0px 6px 12px -3px, rgba(0, 39, 80, 0.04) 0px 0px 0px 1px;
+    --shadow-cta: rgba(24, 37, 66, 0.32) 0px 1px 3px 0px, rgba(24, 37, 66, 0.12) 0px 0.5px 0.5px 0px, rgba(24, 37, 66, 0.44) 0px 12px 24px -12px, rgba(219, 247, 255, 0.06) 0px 8px 16px 0px inset, rgba(219, 247, 255, 0.48) 0px 0.5px 0.5px 0px inset;
+
+    --font-sans:    'Inter', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Fraunces', 'Inter', ui-serif, Georgia, serif;
+    --font-mono:    'Space Mono', ui-monospace, monospace;
+    --font-pixel:   'Doto', ui-monospace, monospace;
+
+    /* ─── bento (Nothing OS) palette — preserved for existing widgets ─── */
     --black: #000;
     --surface: #111;
     --surface-raised: #1A1A1A;
@@ -25,15 +53,17 @@
   }
 
   .light-layer {
-    --black: #F5F5F5;
-    --surface: #FFF;
-    --surface-raised: #F0F0F0;
-    --border: #E8E8E8;
-    --border-visible: #CCC;
-    --text-disabled: #999;
-    --text-secondary: #666;
-    --text-primary: #1A1A1A;
-    --text-display: #000;
+    /* Antimetal light-mode tokens override the bento neutrals — Ghost
+       Canvas + Pure Surface + Midnight Navy text, blue-tinted shadows. */
+    --black: var(--color-ghost-canvas);
+    --surface: var(--color-pure-surface);
+    --surface-raised: var(--color-ghost-canvas);
+    --border: rgba(0, 39, 80, 0.06);
+    --border-visible: var(--color-fog-border);
+    --text-disabled: var(--color-ash-medium);
+    --text-secondary: var(--color-slate-ink);
+    --text-primary: var(--color-midnight-navy);
+    --text-display: var(--color-deep-cosmos);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -70,6 +100,11 @@
     inset: 0;
     clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
     will-change: clip-path;
+    /* Clone overlay is purely visual — clicks fall through to the dark
+       layer underneath which holds the real event listeners. Without this
+       the right-side toggles, resolver, etc. swallow events into a clone
+       with no handlers attached. */
+    pointer-events: none;
   }
 
   .topbar {
@@ -174,8 +209,20 @@
   }
 
   .light-layer .card::after {
-    background: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.04) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(0,39,80,0.04) 50%, transparent 100%);
   }
+
+  /* Antimetal Feature Card — light-layer cards lose the hard border and gain
+     the 4-layer blue-tinted shadow stack (xl) plus a 1px outer-ring shadow
+     substitute. Radius bumped 16 → 20px (--radius-cards). */
+  .light-layer .card {
+    background: var(--color-pure-surface);
+    border: 0;
+    border-radius: 20px;
+    box-shadow: var(--shadow-xl);
+  }
+  .light-layer .span-2x2 { box-shadow: var(--shadow-xl); }
+  .light-layer .card:hover { box-shadow: var(--shadow-md), var(--shadow-xl); }
 
   .card:hover {
     border-color: var(--border-visible);
@@ -213,12 +260,35 @@
     color: var(--text-secondary);
   }
 
+  /* Antimetal — light-layer labels: switch from Space Mono uppercase tracking
+     to Inter caption spec (13px / -0.21px tracking). The bento's dark side
+     keeps Space Mono for tech-readout DNA. */
+  .light-layer .label {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: -0.21px;
+    text-transform: none;
+    font-weight: 450;
+    color: var(--color-slate-ink);
+  }
+
   .title {
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 500;
     font-size: 22px;
     letter-spacing: -0.01em;
     color: var(--text-display);
+  }
+
+  /* Antimetal heading-sm — 22px / 1.29 line-height / -0.22px tracking, Inter weight 480. */
+  .light-layer .title {
+    font-family: var(--font-sans);
+    font-size: 22px;
+    line-height: 1.29;
+    letter-spacing: -0.22px;
+    font-weight: 500;
+    color: var(--color-midnight-navy);
   }
 
   .mono-value {
@@ -308,25 +378,29 @@
   .hero-resolver .ens-input:focus { border-color: var(--text-display); }
   .hero-resolver .ens-input::placeholder { color: var(--text-disabled); }
 
+  /* Antimetal Chartreuse CTA Button — pill 9999px, #d0f100 fill, midnight-navy text,
+     blue-tinted shadow stack. The single bridge color across dark and light modes. */
   .hero-resolver .ens-go {
-    background: transparent;
-    border: 1px solid var(--border-visible);
-    color: var(--text-primary);
-    padding: 0 14px;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.12em;
+    background: var(--color-chartreuse-pulse);
+    border: 0;
+    color: var(--color-midnight-navy);
+    padding: 0 18px;
+    height: 36px;
+    border-radius: 9999px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: -0.005em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-cta);
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .hero-resolver .ens-go:hover {
-    border-color: var(--text-display);
-    color: var(--text-display);
-  }
+  .hero-resolver .ens-go:hover { transform: translateY(-1px); }
   .hero-resolver .ens-go:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: wait;
+    transform: none;
   }
 
   .hero-resolver .ens-chain {
@@ -352,6 +426,749 @@
   }
   .hero-resolver .cid.err { color: var(--accent-red); }
   .hero-resolver .cid.ok { color: var(--success); }
+  /* Cached-preview state — neutral slate, signals "info" not "alarm".
+     Dark side picks up Nothing OS --text-secondary (#999), light layer
+     remaps that var to Antimetal Slate Ink (#6b7184). */
+  .hero-resolver .cid.warn { color: var(--text-secondary); }
+
+  /* ─── Skill detail overlay ───────────────────────────────────────────
+     Full-bleed Antimetal Ghost Canvas takeover when route is
+     #/skill/<ensName>. Replaces the bento dashboard visually, keeps the
+     stage layer mounted underneath for instant return. */
+  .skill-detail {
+    position: fixed;
+    inset: 0;
+    background: var(--color-ghost-canvas);
+    color: var(--color-midnight-navy);
+    font-family: var(--font-sans);
+    overflow-y: auto;
+    z-index: 100;
+    animation: skillDetailIn 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .skill-detail[hidden] { display: none; }
+
+  @keyframes skillDetailIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .skill-detail-bar {
+    position: sticky;
+    top: 0;
+    background: var(--color-ghost-canvas);
+    border-bottom: 1px solid rgba(0, 39, 80, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    z-index: 1;
+  }
+
+  .skill-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 0;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    color: var(--color-midnight-navy);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 450;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+  }
+  .skill-back:hover { background: var(--color-pure-surface); }
+
+  .skill-breadcrumb {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 13px;
+  }
+  .skill-breadcrumb .ens {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-midnight-navy);
+    letter-spacing: -0.005em;
+  }
+  .skill-breadcrumb .resolved {
+    font-size: 12px;
+    color: var(--color-slate-ink);
+    letter-spacing: -0.005em;
+  }
+
+  .skill-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    background: var(--color-pure-surface);
+    border: 0;
+    color: var(--color-midnight-navy);
+    font-size: 22px;
+    font-weight: 400;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    line-height: 1;
+  }
+  .skill-close:hover { background: var(--color-ghost-canvas); }
+
+  /* MVR-style registry layout — chain pill row + 3-col grid (sidebar tabs |
+     main content | right install/meta column). Header sits in skill-detail-bar,
+     hero identity sits inside the main column above the tab content. */
+  .skill-chain-pills {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 32px 0;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 39, 80, 0.06);
+  }
+  .skill-chain-pill {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 450;
+    letter-spacing: -0.21px;
+    color: var(--color-slate-ink);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .skill-chain-pill.active {
+    color: var(--color-midnight-navy);
+    border-bottom-color: var(--color-deep-cosmos);
+  }
+  .skill-chain-pill .pip {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-chartreuse-pulse);
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .skill-chain-pill:not(.active) .pip { background: var(--color-fog-border); }
+
+  .skill-detail-body {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 220px 1fr 320px;
+    gap: 40px;
+    align-items: start;
+  }
+
+  /* ─── Sidebar ─── */
+  .skill-sidebar {
+    position: sticky;
+    top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .skill-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: transparent;
+    border: 0;
+    color: var(--color-slate-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 450;
+    letter-spacing: -0.16px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .skill-tab:hover { background: rgba(27, 37, 64, 0.04); }
+  .skill-tab.active {
+    background: var(--color-pure-surface);
+    color: var(--color-midnight-navy);
+    box-shadow: var(--shadow-md);
+  }
+  .skill-tab .count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: rgba(12, 38, 77, 0.06);
+    padding: 2px 8px;
+    border-radius: 9999px;
+    color: var(--color-slate-ink);
+  }
+  .skill-tab.active .count {
+    background: var(--color-deep-cosmos);
+    color: #fafeff;
+  }
+  .skill-tab.disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ─── Main content ─── */
+  .skill-main { min-width: 0; }
+  .skill-identity {
+    margin-bottom: 32px;
+  }
+  .skill-identity .kicker {
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: -0.21px;
+    color: var(--color-slate-ink);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .skill-identity h1 {
+    font-family: var(--font-display);
+    font-size: 48px;
+    font-weight: 400;
+    line-height: 1.04;
+    letter-spacing: -0.010em;
+    color: var(--color-midnight-navy);
+    margin-bottom: 8px;
+    font-feature-settings: 'ss04', 'ss06', 'ss09', 'ss10', 'ss11';
+  }
+  .skill-identity .version {
+    font-size: 14px;
+    color: var(--color-slate-ink);
+    letter-spacing: -0.005em;
+    font-family: var(--font-mono);
+  }
+
+  .skill-pane[hidden] { display: none; }
+  .skill-pane h2 {
+    font-family: var(--font-sans);
+    font-size: 22px;
+    line-height: 1.29;
+    letter-spacing: -0.22px;
+    font-weight: 500;
+    color: var(--color-midnight-navy);
+    margin-bottom: 16px;
+  }
+  .skill-pane p.lead {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--color-storm-gray);
+    letter-spacing: -0.16px;
+    margin-bottom: 16px;
+  }
+  .empty-state {
+    background: var(--color-pure-surface);
+    border-radius: 20px;
+    padding: 56px 24px;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+    color: var(--color-slate-ink);
+    font-size: 14px;
+  }
+  .empty-state strong {
+    display: block;
+    color: var(--color-midnight-navy);
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  /* ─── Right column ─── */
+  .skill-rail {
+    position: sticky;
+    top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .rail-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .rail-block h3 {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-slate-ink);
+    font-weight: 450;
+  }
+  .rail-block .install-snippet {
+    background: var(--color-deep-cosmos);
+    border-radius: 16px;
+    padding: 14px 16px;
+    color: #fafeff;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: -0.005em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .rail-block .install-snippet code {
+    background: transparent;
+    color: var(--color-chartreuse-pulse);
+    padding: 0;
+  }
+  .rail-block .copy-btn {
+    background: transparent;
+    border: 0;
+    color: #fafeff;
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 14px;
+  }
+  .rail-block .copy-btn:hover { opacity: 1; }
+  .rail-block .description {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-storm-gray);
+    letter-spacing: -0.005em;
+  }
+  .rail-block .meta-grid {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 6px 12px;
+    font-size: 12px;
+  }
+  .rail-block .meta-grid dt {
+    color: var(--color-slate-ink);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .rail-block .meta-grid dd {
+    font-family: var(--font-mono);
+    color: var(--color-midnight-navy);
+    word-break: break-all;
+  }
+
+  @media (max-width: 1000px) {
+    .skill-detail-body { grid-template-columns: 1fr; }
+    .skill-sidebar, .skill-rail { position: static; }
+    .skill-sidebar { flex-direction: row; flex-wrap: wrap; }
+  }
+
+  /* ─── Publish skill overlay ──────────────────────────────────────────
+     Antimetal Ghost Canvas takeover, identical chrome to skill-detail
+     but with a form-builder layout instead of read-only sidebar tabs. */
+  .publish-overlay {
+    position: fixed; inset: 0;
+    background: var(--color-ghost-canvas);
+    color: var(--color-midnight-navy);
+    font-family: var(--font-sans);
+    overflow-y: auto;
+    z-index: 110;
+    animation: skillDetailIn 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .publish-overlay[hidden] { display: none; }
+
+  .publish-bar {
+    position: sticky; top: 0;
+    background: var(--color-ghost-canvas);
+    border-bottom: 1px solid rgba(0, 39, 80, 0.06);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px; z-index: 1;
+  }
+  .publish-title {
+    font-family: var(--font-sans);
+    font-size: 14px; font-weight: 500;
+    color: var(--color-midnight-navy);
+    letter-spacing: -0.005em;
+  }
+
+  .publish-body {
+    max-width: 1100px; margin: 0 auto; padding: 40px 32px 96px;
+    display: grid; grid-template-columns: 1fr 380px; gap: 40px;
+    align-items: start;
+  }
+
+  .publish-form { display: flex; flex-direction: column; gap: 24px; }
+  .publish-form h1 {
+    font-family: var(--font-display);
+    font-size: 40px; font-weight: 400; line-height: 1.05;
+    letter-spacing: -0.010em; color: var(--color-midnight-navy);
+    font-feature-settings: 'ss04','ss06','ss09','ss10','ss11';
+  }
+  .publish-form h1 + p {
+    font-size: 16px; line-height: 1.5; color: var(--color-storm-gray);
+    letter-spacing: -0.16px; max-width: 640px; margin-top: 4px;
+  }
+
+  .form-section {
+    background: var(--color-pure-surface);
+    border-radius: 20px; padding: 24px;
+    box-shadow: var(--shadow-xl);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .form-section h3 {
+    font-size: 13px; line-height: 1; letter-spacing: -0.21px;
+    color: var(--color-slate-ink); text-transform: uppercase;
+    font-weight: 450;
+  }
+  .form-row { display: flex; flex-direction: column; gap: 6px; }
+  .form-row label {
+    font-size: 12px; color: var(--color-slate-ink);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .form-row input, .form-row textarea, .form-row select {
+    border-radius: 0;
+    background: transparent;
+    border: 1px solid var(--color-midnight-navy);
+    color: var(--color-midnight-navy);
+    padding: 10px 14px;
+    font-family: var(--font-sans);
+    font-size: 14px; letter-spacing: -0.005em;
+    outline: none;
+  }
+  .form-row input:focus, .form-row textarea:focus {
+    border-color: var(--color-deep-cosmos);
+  }
+  .form-row textarea { min-height: 72px; resize: vertical; }
+  .form-row .preview {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--color-slate-ink); margin-top: 2px;
+  }
+  .form-row.invalid input { border-color: var(--accent-red); }
+  .form-row .help {
+    font-size: 11px; color: var(--color-slate-ink);
+    letter-spacing: -0.005em;
+  }
+
+  .exec-radio { display: flex; gap: 8px; flex-wrap: wrap; }
+  .exec-radio label {
+    cursor: pointer; padding: 6px 14px; border-radius: 9999px;
+    background: rgba(12, 38, 77, 0.04); color: var(--color-slate-ink);
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    transition: all 120ms ease;
+  }
+  .exec-radio label.selected {
+    background: var(--color-deep-cosmos); color: #fafeff;
+  }
+  .exec-radio input { display: none; }
+
+  .publish-rail { display: flex; flex-direction: column; gap: 16px;
+    position: sticky; top: 80px; }
+  .publish-rail h3 {
+    font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--color-slate-ink); font-weight: 450;
+  }
+  .publish-rail pre {
+    background: rgba(12, 38, 77, 0.04);
+    border-radius: 16px; padding: 14px;
+    font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
+    color: var(--color-midnight-navy);
+    white-space: pre-wrap; word-break: break-all;
+    max-height: 320px; overflow-y: auto;
+  }
+  .publish-rail .schema-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 16px;
+    background: rgba(255, 255, 255, 0.01);
+    box-shadow: var(--shadow-md);
+    font-size: 11px; color: var(--color-midnight-navy);
+    font-family: var(--font-mono);
+  }
+  .schema-pill .pip {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--color-fog-border);
+  }
+  .schema-pill.valid .pip { background: var(--color-chartreuse-pulse); }
+
+  .publish-actions { display: flex; flex-direction: column; gap: 8px; }
+  .publish-actions .btn {
+    height: 44px; border-radius: 9999px; border: 0;
+    cursor: pointer; font-size: 14px; font-family: var(--font-sans);
+    font-weight: 500; letter-spacing: -0.005em;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .publish-actions .btn.primary {
+    background: var(--color-chartreuse-pulse);
+    color: var(--color-midnight-navy);
+    box-shadow: var(--shadow-cta);
+  }
+  .publish-actions .btn.primary:hover { transform: translateY(-1px); }
+  .publish-actions .btn.primary:disabled {
+    background: var(--color-fog-border); box-shadow: none;
+    cursor: not-allowed; transform: none;
+  }
+  .publish-actions .btn.ghost {
+    background: transparent; color: var(--color-midnight-navy);
+    box-shadow: var(--shadow-ghost-light);
+  }
+  .publish-status {
+    font-size: 12px; line-height: 1.5;
+    padding: 10px 12px; border-radius: 12px;
+    font-family: var(--font-mono); word-break: break-all;
+  }
+  .publish-status.idle { background: rgba(12,38,77,0.04); color: var(--color-slate-ink); }
+  .publish-status.busy { background: rgba(0,39,80,0.06); color: var(--color-deep-cosmos); }
+  .publish-status.ok { background: rgba(208,241,0,0.18); color: var(--color-deep-cosmos); }
+  .publish-status.err { background: rgba(215,25,33,0.06); color: var(--accent-red); }
+
+  /* + Publish trigger pill that lives in the dark bento top bar */
+  .publish-trigger {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0 14px; height: 32px; border-radius: 9999px;
+    background: var(--color-chartreuse-pulse);
+    color: var(--color-midnight-navy);
+    border: 0; cursor: pointer;
+    font-family: 'Space Mono', monospace; font-size: 11px;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    box-shadow: var(--shadow-cta);
+    transition: transform 200ms ease;
+  }
+  .publish-trigger:hover { transform: translateY(-1px); }
+  .publish-trigger.connected {
+    background: transparent; color: var(--text-display);
+    border: 1px solid var(--text-display); box-shadow: none;
+  }
+
+  @media (max-width: 1000px) {
+    .publish-body { grid-template-columns: 1fr; }
+    .publish-rail { position: static; }
+  }
+
+  .tool-card {
+    background: var(--color-pure-surface);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--shadow-xl);
+    margin-bottom: 16px;
+  }
+  .tool-card header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .tool-card h3 {
+    font-family: var(--font-sans);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.29;
+    letter-spacing: -0.22px;
+    color: var(--color-midnight-navy);
+  }
+  .exec-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.01);
+    color: var(--color-midnight-navy);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: var(--shadow-md);
+  }
+  .tool-card .tool-desc {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--color-storm-gray);
+    margin-bottom: 16px;
+    letter-spacing: -0.005em;
+  }
+  .tool-card details {
+    background: rgba(12, 38, 77, 0.04);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .tool-card details summary {
+    cursor: pointer;
+    color: var(--color-slate-ink);
+    font-weight: 450;
+    user-select: none;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 11px;
+  }
+  .tool-card details pre {
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-midnight-navy);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  /* ─── Right-side bento widgets — skillname-relevant content ─── */
+  .skill-catalog {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 12px;
+  }
+  .catalog-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    width: 100%;
+    text-align: left;
+    transition: background 120ms ease;
+    color: inherit;
+  }
+  .catalog-row:hover { background: rgba(255, 255, 255, 0.04); }
+  .light-layer .catalog-row:hover { background: rgba(0, 39, 80, 0.04); }
+  .catalog-row .ens {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-display);
+    letter-spacing: -0.005em;
+  }
+  .light-layer .catalog-row .ens { color: var(--color-midnight-navy); }
+  .catalog-row .meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .catalog-row .exec-mini {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .light-layer .catalog-row .exec-mini {
+    background: rgba(12, 38, 77, 0.04);
+    color: var(--color-slate-ink);
+  }
+  .catalog-row .arr {
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  .catalog-row:hover .arr { opacity: 1; }
+
+  /* Executor mix horizontal bar */
+  .exec-bar {
+    display: flex;
+    gap: 2px;
+    height: 14px;
+    margin-top: 10px;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .exec-bar .seg { background: var(--text-display); transition: opacity 200ms ease; }
+  .exec-bar .seg[data-exec="http"] { background: var(--text-display); }
+  .exec-bar .seg[data-exec="keeperhub"] { background: var(--accent-red); }
+  .exec-bar .seg[data-exec="0g-compute"] { background: var(--utility-orange); }
+  .exec-bar .seg[data-exec="local"] { background: var(--text-secondary); }
+  .light-layer .exec-bar .seg[data-exec="http"] { background: var(--color-deep-cosmos); }
+  .light-layer .exec-bar .seg[data-exec="keeperhub"] { background: var(--color-chartreuse-pulse); }
+  .light-layer .exec-bar .seg[data-exec="0g-compute"] { background: var(--utility-orange); }
+  .light-layer .exec-bar .seg[data-exec="local"] { background: var(--color-slate-ink); }
+  .exec-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+    margin-top: 8px;
+    font-size: 9.5px;
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+  }
+  .exec-legend span { display: flex; align-items: center; gap: 6px; }
+  .exec-legend span::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  .skill-source {
+    background: var(--color-pure-surface);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: var(--shadow-xl);
+  }
+  .skill-source dl {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    row-gap: 14px;
+    column-gap: 24px;
+    align-items: baseline;
+    font-size: 14px;
+  }
+  .skill-source dt {
+    font-size: 12px;
+    color: var(--color-slate-ink);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .skill-source dd {
+    font-family: var(--font-mono);
+    color: var(--color-midnight-navy);
+    word-break: break-all;
+    font-size: 13px;
+  }
+  .skill-source .use-snippet {
+    margin-top: 24px;
+    padding: 16px 20px;
+    background: var(--color-deep-cosmos);
+    border-radius: 16px;
+    color: #fafeff;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: -0.005em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .skill-source .use-snippet code {
+    background: transparent;
+    color: var(--color-chartreuse-pulse);
+    padding: 0;
+  }
+
+  .skill-trust ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .skill-trust li {
+    background: var(--color-pure-surface);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-md);
+    font-size: 14px;
+    color: var(--color-midnight-navy);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .skill-trust li.disabled { opacity: 0.5; }
+  .skill-trust .pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-slate-ink);
+  }
+  .skill-trust li.enabled .pip { background: var(--color-chartreuse-pulse); }
 
   .hero-tools-list {
     margin-top: 4px;
@@ -493,6 +1310,14 @@
 
   .metric-bar .s.on { background: var(--text-display); }
   .metric-bar .s.warn { background: var(--utility-orange); }
+
+  /* Antimetal — on light layer, Doto value pixel font shifts to Deep Cosmos
+     (#001033) for the structural-ink feel. Doto stays as the bento signature. */
+  .light-layer .doto,
+  .light-layer .metric-value,
+  .light-layer .hero-clock { color: var(--color-deep-cosmos); }
+  .light-layer .metric-bar .s { background: rgba(27, 37, 64, 0.12); }
+  .light-layer .metric-bar .s.on { background: var(--color-deep-cosmos); }
 
   .spark {
     display: flex;
@@ -659,6 +1484,10 @@
   .light-layer .heat-grid .h[data-l="2"] { background: #999; }
   .light-layer .heat-grid .h[data-l="3"] { background: #555; }
   .light-layer .heat-grid .h[data-l="4"] { background: var(--text-display); }
+  /* Antimetal Chartreuse for "session-resolved" cells. Override after the
+     numeric levels so it wins regardless of theme. */
+  .heat-grid .h[data-l="5"] { background: var(--color-chartreuse-pulse); }
+  .light-layer .heat-grid .h[data-l="5"] { background: var(--color-chartreuse-pulse); }
 
   .heat-foot {
     display: flex;
@@ -961,6 +1790,7 @@
         <span>BLOCK <b style="color:var(--text-display);font-weight:700">7'342'109</b></span>
         <a href="./logs/" style="color:inherit;text-decoration:none">/ LOGS</a>
         <span class="live">LIVE</span>
+        <button class="publish-trigger" id="publishOpen" type="button" title="Publish a skill on-chain">+ PUBLISH</button>
       </div>
     </header>
 
@@ -1005,38 +1835,70 @@
         </div>
       </article>
 
-      <article class="card glyph span-2x1" data-card="glyph">
-        <div class="hover-flag">GLYPH · ACTIVE</div>
+      <article class="card glyph span-2x1" data-card="catalog">
+        <div class="hover-flag">CATALOG · CLICK ROW</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="title">Glyph</div>
-          <div class="label">PATTERN <b style="color:var(--text-display);font-weight:700">07/24</b></div>
+          <div class="title">Skill catalog</div>
+          <div class="label"><b style="color:var(--text-display);font-weight:700">6</b> ATOMIC</div>
         </div>
-        <div class="glyph-grid" id="glyphGrid"></div>
-        <div class="glyph-foot">
-          <div class="label">SYNC TO BRIDGE EVENTS</div>
-          <div class="label" id="glyphHz">~1.4 Hz</div>
+        <div class="skill-catalog" id="skillCatalog">
+          <button class="catalog-row" data-skill="quote.skilltest.eth" type="button">
+            <span class="ens">quote.skilltest.eth</span>
+            <span class="meta"><span class="exec-mini">http</span><span class="arr">→</span></span>
+          </button>
+          <button class="catalog-row" data-skill="swap.skilltest.eth" type="button">
+            <span class="ens">swap.skilltest.eth</span>
+            <span class="meta"><span class="exec-mini">keeperhub · x402</span><span class="arr">→</span></span>
+          </button>
+          <button class="catalog-row" data-skill="score.skilltest.eth" type="button">
+            <span class="ens">score.skilltest.eth</span>
+            <span class="meta"><span class="exec-mini">http</span><span class="arr">→</span></span>
+          </button>
+          <button class="catalog-row" data-skill="weather.skilltest.eth" type="button">
+            <span class="ens">weather.skilltest.eth</span>
+            <span class="meta"><span class="exec-mini">http</span><span class="arr">→</span></span>
+          </button>
+          <button class="catalog-row" data-skill="infer.skilltest.eth" type="button">
+            <span class="ens">infer.skilltest.eth</span>
+            <span class="meta"><span class="exec-mini">0g-compute</span><span class="arr">→</span></span>
+          </button>
+          <button class="catalog-row" data-skill="hello.skilltest.eth" type="button">
+            <span class="ens">hello.skilltest.eth</span>
+            <span class="meta"><span class="exec-mini">local</span><span class="arr">→</span></span>
+          </button>
         </div>
       </article>
 
-      <article class="card metric" data-card="chain">
-        <div class="hover-flag">CHAIN · OK</div>
+      <article class="card metric" data-card="schemaversion">
+        <div class="hover-flag">SCHEMA · v1</div>
         <div>
-          <div class="label">BASE SEPOLIA</div>
-          <div class="metric-value" id="chainNum" style="margin-top:6px">84532</div>
+          <div class="label">SCHEMA</div>
+          <div class="metric-value" style="margin-top:6px;font-size:42px">v1</div>
         </div>
         <div class="metric-foot">
-          <div class="label">CHAIN ID</div>
-          <div class="label" style="color:var(--text-primary)">↗ 12 ms</div>
+          <div class="label">skill-v1.json</div>
+          <div class="label" style="color:var(--text-primary)">↗ ENSIP</div>
         </div>
       </article>
 
-      <article class="card gas" data-card="gas">
-        <div class="hover-flag">GAS · STEADY</div>
+      <article class="card gas" data-card="execmix">
+        <div class="hover-flag">EXEC · 4 TYPES</div>
         <div>
-          <div class="label">BASE FEE</div>
-          <div class="gas-num" id="gasNum">0.07<small>GWEI</small></div>
+          <div class="label">EXECUTORS</div>
+          <div class="gas-num" style="margin-top:4px">4<small>TYPES</small></div>
         </div>
-        <div class="gas-bar" id="gasBar"></div>
+        <div class="exec-bar">
+          <div class="seg" data-exec="http" style="flex:4"></div>
+          <div class="seg" data-exec="keeperhub" style="flex:1"></div>
+          <div class="seg" data-exec="0g-compute" style="flex:1"></div>
+          <div class="seg" data-exec="local" style="flex:1"></div>
+        </div>
+        <div class="exec-legend">
+          <span style="color:var(--text-display)">http · 4</span>
+          <span style="color:var(--accent-red)">keeperhub · 1</span>
+          <span style="color:var(--utility-orange)">0g-compute · 1</span>
+          <span style="color:var(--text-secondary)">local · 1</span>
+        </div>
       </article>
 
       <article class="card wave span-2x1" data-card="wave">
@@ -1057,25 +1919,22 @@
         </div>
       </article>
 
-      <article class="card spark" data-card="latency">
-        <div class="hover-flag">RPC · 24h</div>
+      <article class="card spark" data-card="tools">
+        <div class="hover-flag">TOOLS · 1:1</div>
         <div>
-          <div class="label">RPC LATENCY</div>
-          <div class="mono-value" style="font-size:32px;font-weight:700;margin-top:4px">182<span style="font-size:14px;color:var(--text-secondary);font-weight:400;letter-spacing:0.04em;margin-left:4px">MS</span></div>
+          <div class="label">TOTAL TOOLS</div>
+          <div class="mono-value" style="font-size:32px;font-weight:700;margin-top:4px">6<span style="font-size:14px;color:var(--text-secondary);font-weight:400;letter-spacing:0.04em;margin-left:4px">FNS</span></div>
         </div>
-        <svg class="spark-svg" viewBox="0 0 200 56" preserveAspectRatio="none">
-          <path class="baseline" d="M0,28 L200,28"/>
-          <path class="draw-in" id="latencyPath" d=""/>
-        </svg>
+        <div class="label" style="margin-top:auto;font-size:10px">ONE ENS NAME = ONE FUNCTION · atomic granularity</div>
       </article>
 
-      <article class="card metric" data-card="cpu">
-        <div class="hover-flag">BRIDGE · 0.9s</div>
+      <article class="card metric" data-card="imports">
+        <div class="hover-flag">IMPORTS · LEAVES</div>
         <div>
-          <div class="label">BRIDGE CPU</div>
-          <div class="mono-value" style="font-size:36px;font-weight:700;margin-top:4px;letter-spacing:-0.02em" id="cpuNum">38<span style="font-size:18px;color:var(--text-secondary);font-weight:400;letter-spacing:0.04em">%</span></div>
+          <div class="label">IMPORT EDGES</div>
+          <div class="mono-value" style="font-size:36px;font-weight:700;margin-top:4px;letter-spacing:-0.02em" id="importsNum">0<span style="font-size:18px;color:var(--text-secondary);font-weight:400;letter-spacing:0.04em">/6</span></div>
         </div>
-        <div class="metric-bar" id="cpuBar"></div>
+        <div class="label" style="font-size:9.5px">issue #3 · walkImports + lockfile</div>
       </article>
 
       <article class="card ticker span-2x1" data-card="ticker">
@@ -1162,16 +2021,16 @@
       </article>
 
       <article class="card keys span-2x1" data-card="keys">
-        <div class="hover-flag">PALETTE · ⌘K</div>
+        <div class="hover-flag">KEYS · LIVE</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div class="title">Shortcuts</div>
-          <div class="label">⌘K TO OPEN</div>
+          <div class="label">PRESS ANY</div>
         </div>
         <div class="keys-list">
-          <div class="keys-row"><div class="name">Resolve ENS name</div><div class="kbd"><span>⌘</span><span>R</span></div></div>
-          <div class="keys-row"><div class="name">Publish bundle</div><div class="kbd"><span>⌘</span><span>⇧</span><span>P</span></div></div>
-          <div class="keys-row"><div class="name">Verify ENSIP-25</div><div class="kbd"><span>⌘</span><span>V</span></div></div>
-          <div class="keys-row"><div class="name">Clear bridge cache</div><div class="kbd"><span>⌘</span><span>K</span><span>C</span></div></div>
+          <div class="keys-row"><div class="name">Focus ENS resolver</div><div class="kbd"><span>/</span></div></div>
+          <div class="keys-row"><div class="name">Close skill detail</div><div class="kbd"><span>Esc</span></div></div>
+          <div class="keys-row"><div class="name">Open GitHub repo</div><div class="kbd"><span>g</span><span>r</span></div></div>
+          <div class="keys-row"><div class="name">Open GitHub issues</div><div class="kbd"><span>g</span><span>i</span></div></div>
         </div>
       </article>
 
@@ -1202,8 +2061,208 @@
 
 </div>
 
+<aside id="skillDetail" class="skill-detail" hidden>
+  <header class="skill-detail-bar">
+    <button class="skill-back" id="skillBack" type="button">
+      <span aria-hidden>←</span> Back
+    </button>
+    <div class="skill-breadcrumb">
+      <span class="ens" id="skillDetailEns">—</span>
+      <span class="resolved" id="skillDetailMeta">—</span>
+    </div>
+    <button class="skill-close" id="skillClose" type="button" aria-label="Close detail view">×</button>
+  </header>
+
+  <nav class="skill-chain-pills">
+    <button class="skill-chain-pill active" type="button"><span class="pip"></span>Sepolia</button>
+    <button class="skill-chain-pill" type="button" disabled><span class="pip"></span>Mainnet</button>
+  </nav>
+
+  <main class="skill-detail-body">
+    <aside class="skill-sidebar" role="tablist">
+      <button class="skill-tab active" data-pane="readme" type="button">Readme</button>
+      <button class="skill-tab" data-pane="tools" type="button">Tools <span class="count" id="tabToolsCount">0</span></button>
+      <button class="skill-tab" data-pane="dependencies" type="button">Dependencies <span class="count" id="tabDepsCount">0</span></button>
+      <button class="skill-tab" data-pane="dependents" type="button">Dependents <span class="count">0</span></button>
+      <button class="skill-tab" data-pane="trust" type="button">Trust</button>
+      <button class="skill-tab disabled" type="button" disabled>Analytics <span class="count">soon</span></button>
+    </aside>
+
+    <section class="skill-main">
+      <header class="skill-identity">
+        <p class="kicker">SKILL · ATOMIC FUNCTION</p>
+        <h1 id="skillDetailName">—</h1>
+        <p class="version" id="skillDetailVersion">—</p>
+      </header>
+
+      <section class="skill-pane" data-pane="readme">
+        <h2>Readme</h2>
+        <p class="lead" id="skillReadmeDesc">—</p>
+        <div id="skillReadmeBody"></div>
+      </section>
+
+      <section class="skill-pane" data-pane="tools" hidden>
+        <h2 id="skillDetailToolsHeader">Tools</h2>
+        <div id="skillDetailTools"></div>
+      </section>
+
+      <section class="skill-pane" data-pane="dependencies" hidden>
+        <h2>Dependencies</h2>
+        <div id="skillDetailDeps"></div>
+      </section>
+
+      <section class="skill-pane" data-pane="dependents" hidden>
+        <h2>Dependents</h2>
+        <div class="empty-state">
+          <strong>No dependents yet</strong>
+          The on-chain dependents indexer (Issue #6) walks every <code>xyz.manifest.skill.imports</code> record and surfaces reverse-deps here. Currently 0 — this skill isn't imported by any other manifest yet.
+        </div>
+      </section>
+
+      <section class="skill-pane" data-pane="trust" hidden>
+        <h2>Trust</h2>
+        <ul id="skillDetailTrust"></ul>
+      </section>
+    </section>
+
+    <aside class="skill-rail">
+      <div class="rail-block">
+        <h3>Install</h3>
+        <div class="install-snippet">
+          <code id="skillUseSnippet">Use quote.skilltest.eth</code>
+          <button class="copy-btn" id="skillCopyBtn" type="button" title="Copy">⎘</button>
+        </div>
+        <p style="font-size:12px;color:var(--color-slate-ink);margin-top:4px">Type this in Claude Desktop after wiring the bridge MCP server.</p>
+      </div>
+
+      <div class="rail-block">
+        <h3>Description</h3>
+        <p class="description" id="skillDetailDesc">—</p>
+      </div>
+
+      <div class="rail-block">
+        <h3>Source</h3>
+        <dl class="meta-grid">
+          <dt>ENS</dt><dd id="skillSourceEns">—</dd>
+          <dt>Key</dt><dd>xyz.manifest.skill</dd>
+          <dt>URI</dt><dd id="skillSourceUri">—</dd>
+          <dt>Path</dt><dd id="skillSourcePath">—</dd>
+        </dl>
+      </div>
+    </aside>
+  </main>
+</aside>
+
+<aside id="publishOverlay" class="publish-overlay" hidden>
+  <header class="publish-bar">
+    <button class="skill-back" id="publishBack" type="button"><span aria-hidden>←</span> Back</button>
+    <span class="publish-title">Publish a new skill</span>
+    <button class="skill-close" id="publishClose" type="button" aria-label="Close">×</button>
+  </header>
+
+  <main class="publish-body">
+    <div class="publish-form">
+      <header>
+        <h1>Bind a function to <span style="font-style:italic">an ENS name</span></h1>
+        <p>Fill the manifest, sign once with your wallet — your subname becomes a resolvable atomic skill anyone can <code>Use yourname.skilltest.eth</code> in Claude Desktop. Set-text writes to Sepolia ENS PublicResolver.</p>
+      </header>
+
+      <section class="form-section">
+        <h3>Wallet</h3>
+        <div class="form-row">
+          <label>Connected address</label>
+          <div id="publishWallet" style="font-family:var(--font-mono);font-size:14px;color:var(--color-slate-ink)">— not connected —</div>
+        </div>
+        <button class="btn ghost" id="publishConnect" type="button" style="height:40px;border-radius:9999px;border:0;background:var(--color-deep-cosmos);color:#fafeff;font-family:var(--font-sans);font-size:14px;font-weight:500;cursor:pointer;align-self:flex-start;padding:0 20px">Connect wallet</button>
+        <p class="help">Sepolia testnet only. The connected wallet must own the parent ENS to call setSubnodeRecord — if it doesn't, only setText on an existing subname will work.</p>
+      </section>
+
+      <section class="form-section">
+        <h3>Identity</h3>
+        <div class="form-row">
+          <label>Parent ENS</label>
+          <input id="pf-parent" value="skilltest.eth" spellcheck="false" autocapitalize="off" />
+          <p class="help">An ENS name on Sepolia that the connected wallet owns. <code>skilltest.eth</code> is owned by the project operator — use your own to demo end-to-end.</p>
+        </div>
+        <div class="form-row">
+          <label>Subname (label)</label>
+          <input id="pf-label" placeholder="e.g. weather, swap, score" pattern="^[a-z0-9-]+$" spellcheck="false" autocapitalize="off" />
+          <div class="preview" id="pf-fullname">—</div>
+        </div>
+        <div class="form-row">
+          <label>Skill name (manifest <code>name</code>)</label>
+          <input id="pf-name" placeholder="e.g. weather-tomorrow" pattern="^[a-z0-9-]+$" spellcheck="false" />
+        </div>
+        <div class="form-row" style="display:grid;grid-template-columns:120px 1fr;gap:12px">
+          <div>
+            <label>Version</label>
+            <input id="pf-version" value="1.0.0" />
+          </div>
+          <div>
+            <label>License</label>
+            <input id="pf-license" value="MIT" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <textarea id="pf-desc" placeholder="One sentence: what does this skill do?"></textarea>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h3>First tool</h3>
+        <div class="form-row">
+          <label>Tool name (snake_case)</label>
+          <input id="pf-tool-name" placeholder="e.g. forecast, get_quote" pattern="^[a-z][a-z0-9_]*$" spellcheck="false" />
+        </div>
+        <div class="form-row">
+          <label>Tool description</label>
+          <textarea id="pf-tool-desc" placeholder="What does this single function do?"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Execution type</label>
+          <div class="exec-radio" id="pf-exec">
+            <label><input type="radio" name="exec" value="http" checked />http</label>
+            <label><input type="radio" name="exec" value="local" />local</label>
+            <label><input type="radio" name="exec" value="keeperhub" />keeperhub</label>
+            <label><input type="radio" name="exec" value="0g-compute" />0g-compute</label>
+          </div>
+        </div>
+        <div class="form-row" id="pf-endpoint-row">
+          <label>HTTP endpoint</label>
+          <input id="pf-endpoint" placeholder="https://api.example.com/v1/foo" />
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h3>Bundle CID</h3>
+        <div class="form-row">
+          <label>IPFS CID (after pinning the manifest)</label>
+          <input id="pf-cid" placeholder="bafy…" spellcheck="false" />
+          <p class="help">Pin the manifest first via <code>pnpm tsx scripts/pin-to-storacha.ts</code> or <code>pin-to-0g.ts</code>, then paste the returned CID/root here. Browser-side pinning is V2.</p>
+        </div>
+      </section>
+    </div>
+
+    <aside class="publish-rail">
+      <div>
+        <h3>Manifest preview</h3>
+        <span class="schema-pill" id="pf-schema-pill"><span class="pip"></span> skill-v1 · <span id="pf-schema-state">incomplete</span></span>
+      </div>
+      <pre id="pf-preview">{}</pre>
+
+      <div class="publish-actions">
+        <button class="btn ghost" id="pf-download" type="button">📥 Download manifest.json</button>
+        <button class="btn primary" id="pf-publish" type="button" disabled>Bind to ENS · sign tx</button>
+        <div class="publish-status idle" id="pf-status">Connect wallet, fill the form, paste a CID → click bind. setText × 3 will be signed in your wallet.</div>
+        <a id="pf-tx-link" target="_blank" rel="noreferrer" style="display:none;font-size:12px;color:var(--color-deep-cosmos);text-decoration:underline;text-underline-offset:2px;font-family:var(--font-mono)"></a>
+      </div>
+    </aside>
+  </main>
+</aside>
+
 <script type="module">
-  import { createPublicClient, http } from 'https://esm.sh/viem@2.21.55';
+  import { createPublicClient, createWalletClient, custom, http, namehash, keccak256, toBytes, parseAbi } from 'https://esm.sh/viem@2.21.55';
   import { mainnet, sepolia } from 'https://esm.sh/viem@2.21.55/chains';
   import { normalize } from 'https://esm.sh/viem@2.21.55/ens';
 
@@ -1222,14 +2281,36 @@
     'https://cloudflare-ipfs.com/ipfs/',
   ];
 
-  async function fetchManifest(uri) {
+  // 0G storage download is JSON-RPC + chunked merkle-proof retrieval (see
+  // 0glabs/0g-storage-client/indexer + transfer packages) — not browser-
+  // friendly. The official path is via the bridge or Go CLI. For the website
+  // preview we cache the canonical manifests from the repo so Scene 2 can
+  // render the bundle structure honestly while signalling the authoritative
+  // path is the bridge. Each manifest is duplicated under both the registered
+  // *.skilltest.eth subname and the canonical ensName.
+  const QUOTE_UNISWAP = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"quote-uniswap","ensName":"quote.uniswap.eth","version":"1.0.0","description":"One function: get a USD-denominated price quote for an ERC-20 token. Pure read-only, free.","license":"MIT","tools":[{"name":"get_quote","description":"Returns the current USD price for a token by CoinGecko id.","inputSchema":{"type":"object","properties":{"ids":{"type":"string"},"vs_currencies":{"type":"string","default":"usd"}},"required":["ids"]},"execution":{"type":"http","endpoint":"https://api.coingecko.com/api/v3/simple/price","method":"GET"}}],"trust":{"ensip25":{"enabled":false}}};
+  const SWAP_UNISWAP = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"swap-uniswap","ensName":"swap.uniswap.eth","version":"1.0.0","description":"One function: execute a Uniswap V3 token swap on Base Sepolia through KeeperHub. Pay-per-call ($0.05 USDC) via x402.","license":"MIT","tools":[{"name":"execute_swap","description":"Executes a swap via the Uniswap V3 SwapRouter on Base Sepolia. Pay $0.05 USDC per call through x402.","execution":{"type":"keeperhub","tool":"execute_contract_call","chainId":84532,"payment":{"protocol":"x402","price":"$0.05","token":"USDC","network":"base-sepolia"}}}],"trust":{"ensip25":{"enabled":true},"erc8004":{"registry":"eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432","agentId":42}}};
+  const SCORE_GITCOIN = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"score-gitcoin","ensName":"score.gitcoin.eth","version":"1.0.0","description":"One function: get a Gitcoin Passport trust score for an Ethereum address.","license":"MIT","tools":[{"name":"trust_score","description":"Returns the Gitcoin Passport score for the given address.","execution":{"type":"http","endpoint":"https://api.passport.xyz/v2/stamps/{scorerId}/score/{address}","method":"GET"}}],"trust":{"ensip25":{"enabled":false}}};
+  const WEATHER_TOMORROW = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"weather-tomorrow","ensName":"weather.tomorrow.eth","version":"1.0.0","description":"One function: get the current and next-day weather forecast for a lat/lng. Free, no auth, via Open-Meteo.","license":"MIT","tools":[{"name":"forecast","description":"Returns hourly + daily forecast.","execution":{"type":"http","endpoint":"https://api.open-meteo.com/v1/forecast","method":"GET"}}],"trust":{"ensip25":{"enabled":false}}};
+  const HELLO_WORLD = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"hello-world","ensName":"hello.world.eth","version":"1.0.0","description":"One function: greet a name. The smallest possible local-execution skill.","license":"MIT","tools":[{"name":"greet","description":"Returns 'Hello, {name}!' Runs locally inside the bridge process.","execution":{"type":"local","handler":"tools/greet.json"}}],"trust":{"ensip25":{"enabled":false}}};
+  const INFER_0G = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"infer-0g","ensName":"infer.skilltest.eth","version":"1.0.0","description":"AI inference via 0G Compute Network. Routes prompts to decentralized GPU providers.","license":"MIT","tools":[{"name":"infer","description":"Run AI inference on 0G Compute Network.","execution":{"type":"0g-compute","providerAddress":"0xa48f01287233509FD694a22Bf840225062E67836","model":"qwen/qwen-2.5-7b-instruct"}}]};
+  const MANIFEST_CACHE = {
+    'quote.skilltest.eth': QUOTE_UNISWAP, 'quote.uniswap.eth': QUOTE_UNISWAP,
+    'swap.skilltest.eth': SWAP_UNISWAP, 'swap.uniswap.eth': SWAP_UNISWAP,
+    'score.skilltest.eth': SCORE_GITCOIN, 'score.gitcoin.eth': SCORE_GITCOIN,
+    'weather.skilltest.eth': WEATHER_TOMORROW, 'weather.tomorrow.eth': WEATHER_TOMORROW,
+    'hello.skilltest.eth': HELLO_WORLD, 'hello.world.eth': HELLO_WORLD,
+    'infer.skilltest.eth': INFER_0G,
+  };
+
+  async function fetchManifest(uri, ensName) {
     if (uri.startsWith('ipfs://')) {
       const cid = uri.replace('ipfs://', '');
       let lastErr;
       for (const gw of IPFS_GATEWAYS) {
         try {
           const res = await fetch(`${gw}${cid}/manifest.json`, { cache: 'no-store' });
-          if (res.ok) return { manifest: await res.json(), cid: uri };
+          if (res.ok) return { manifest: await res.json(), cid: uri, cached: false };
           lastErr = `${res.status}`;
         } catch (e) { lastErr = e.message; }
       }
@@ -1238,7 +2319,12 @@
     if (uri.startsWith('https://')) {
       const res = await fetch(uri, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return { manifest: await res.json(), cid: uri };
+      return { manifest: await res.json(), cid: uri, cached: false };
+    }
+    if (uri.startsWith('0g://')) {
+      const cached = MANIFEST_CACHE[ensName];
+      if (cached) return { manifest: cached, cid: uri, cached: true };
+      throw new Error(`0g:// requires bridge; no preview cached for ${ensName}`);
     }
     throw new Error(`unsupported scheme: ${uri.slice(0, 12)}…`);
   }
@@ -1249,17 +2335,19 @@
     const normalized = normalize(name);
     const uri = await client.getEnsText({ name: normalized, key: SKILL_KEY });
     if (!uri) throw new Error(`no ${SKILL_KEY} text record on ${name}`);
-    const { manifest, cid } = await fetchManifest(uri);
-    return { manifest, cid, ms: Math.round(performance.now() - t0) };
+    const result = await fetchManifest(uri, normalized);
+    return { ...result, ms: Math.round(performance.now() - t0) };
   }
 
   let liveResolveActive = false;
 
-  function renderResolved({ manifest, cid, ms }) {
+  function renderResolved({ manifest, cid, ms, cached }) {
     liveResolveActive = true;
     $('#resolveMs').textContent = `${ms} MS`;
-    $('#cidLine').className = 'cid ok';
-    $('#cidLine').textContent = `${cid} · validated`;
+    $('#cidLine').className = cached ? 'cid warn' : 'cid ok';
+    $('#cidLine').textContent = cached
+      ? `${cid} · preview (cached) · authoritative via bridge`
+      : `${cid} · validated`;
     $('#toolsCount').textContent = String(manifest.tools.length).padStart(3, '0');
     const list = $('#toolsList');
     list.innerHTML = '';
@@ -1280,6 +2368,10 @@
     $('#toolsCount').textContent = '000';
   }
 
+  // Last successful resolution, keyed by ENS name. Lets the detail overlay
+  // open instantly without re-fetching when navigating via hash route.
+  const resolvedCache = new Map();
+
   async function runResolve() {
     const btn = $('#resolveBtn');
     const input = $('#ensInput');
@@ -1291,13 +2383,249 @@
     $('#cidLine').textContent = `resolving on ${chain}…`;
     try {
       const r = await resolveSkill(name, chain);
+      resolvedCache.set(name, r);
       renderResolved(r);
+      // Push to bridge feed + heatmap so right-side widgets reflect the action.
+      const scheme = r.cid?.split('://')[0] || '?';
+      pushBridgeEvent(`RESOLVED · ${name} · ${r.ms}ms · ${scheme}://`);
+      bumpHeat(name);
+      // Auto-route to detail view — search becomes navigation. Set the hash
+      // for shareable URLs AND open the overlay directly (hash assignment
+      // is silent when the new value matches the current one, so the
+      // hashchange listener wouldn't fire on a re-resolve of the same name).
+      location.hash = `#/skill/${encodeURIComponent(name)}`;
+      openDetailFromCacheOrResolve(name);
     } catch (e) {
       renderError(e.message ?? String(e));
     } finally {
       btn.disabled = false;
     }
   }
+
+  // ─── Skill detail view + hash router ─────────────────────────────────
+  function renderSkillDetail(name, manifest, uri, ms, cached) {
+    const scheme = uri && uri.includes('://') ? uri.split('://')[0] : '?';
+    $('#skillDetailEns').textContent = name;
+    $('#skillDetailMeta').textContent = ms
+      ? `resolved · ${ms} ms · ${scheme}://`
+      : `cached preview · ${scheme}://`;
+    $('#skillDetailName').textContent = manifest.name;
+    $('#skillDetailVersion').textContent = `v${manifest.version}` +
+      (manifest.license ? ` · ${manifest.license}` : '') + ` · ${name}`;
+    $('#skillDetailDesc').textContent = manifest.description || '';
+    $('#skillReadmeDesc').textContent = manifest.description || '';
+
+    // Readme body — synthesize a "what this skill does" + "how to use it" block
+    // since most reference manifests don't ship a readme.md yet.
+    const exec = manifest.tools?.[0]?.execution?.type || '?';
+    $('#skillReadmeBody').innerHTML = `
+      <p class="lead" style="font-size:14px;color:var(--color-storm-gray);margin-top:24px">This skill exposes <strong>${manifest.tools?.length || 0}</strong> atomic tool(s), all routed through the <code>${exec}</code> executor in the bridge. It complies with the <code>skill-v1.json</code> schema and is content-addressed via the <code>xyz.manifest.skill</code> ENS text record on Sepolia.</p>
+    `;
+
+    $('#tabToolsCount').textContent = manifest.tools.length;
+    $('#tabDepsCount').textContent = (manifest.imports || []).length;
+    $('#skillDetailToolsHeader').textContent = `Tools (${manifest.tools.length})`;
+
+    const toolsHost = $('#skillDetailTools');
+    toolsHost.innerHTML = '';
+    for (const tool of manifest.tools) {
+      const card = document.createElement('article');
+      card.className = 'tool-card';
+      const exec = tool.execution || {};
+      const execTag = (exec.type || 'unknown').toUpperCase();
+      let parts = `
+        <header>
+          <span class="exec-tag">${execTag}</span>
+          <h3>${tool.name}</h3>
+        </header>
+        <p class="tool-desc">${tool.description || ''}</p>`;
+      if (exec.endpoint) {
+        parts += `<details><summary>Endpoint</summary><pre>${exec.method || 'GET'} ${exec.endpoint}</pre></details>`;
+      }
+      if (exec.payment) {
+        parts += `<details><summary>Payment (${exec.payment.protocol})</summary><pre>${JSON.stringify(exec.payment, null, 2)}</pre></details>`;
+      }
+      if (exec.providerAddress) {
+        parts += `<details><summary>0G Compute provider</summary><pre>address: ${exec.providerAddress}\nmodel:   ${exec.model || '?'}</pre></details>`;
+      }
+      if (tool.inputSchema) {
+        parts += `<details><summary>Input schema</summary><pre>${JSON.stringify(tool.inputSchema, null, 2)}</pre></details>`;
+      }
+      card.innerHTML = parts;
+      toolsHost.appendChild(card);
+    }
+
+    // Dependencies — manifest.imports is the planned schema field (Issue #3).
+    const depsHost = $('#skillDetailDeps');
+    const imports = manifest.imports || [];
+    if (imports.length === 0) {
+      depsHost.innerHTML = `<div class="empty-state">
+        <strong>No dependencies</strong>
+        This is a leaf skill — its <code>imports[]</code> array is empty, so the bridge can register it without walking a graph.
+        Once Issue #3 ships, multi-skill agents will list their imports here as ENS pointers (<code>quote.uniswap.eth</code>, <code>swap.uniswap.eth</code>…) and the bridge will resolve transitively.
+      </div>`;
+    } else {
+      depsHost.innerHTML = imports.map(d =>
+        `<div class="tool-card"><header><span class="exec-tag">IMPORT</span><h3>${d}</h3></header></div>`
+      ).join('');
+    }
+
+    const trustHost = $('#skillDetailTrust');
+    const trust = manifest.trust || {};
+    const trustItems = [];
+    const ensip25Enabled = !!(trust.ensip25 && trust.ensip25.enabled);
+    trustItems.push(`<li class="${ensip25Enabled ? 'enabled' : 'disabled'}"><span class="pip"></span> ENSIP-25 — ${ensip25Enabled ? 'enabled' : 'disabled'}</li>`);
+    if (trust.erc8004) {
+      trustItems.push(`<li class="enabled"><span class="pip"></span> ERC-8004 binding — registry <code>${trust.erc8004.registry}</code> · agentId ${trust.erc8004.agentId}</li>`);
+    } else {
+      trustItems.push(`<li class="disabled"><span class="pip"></span> ERC-8004 binding — none</li>`);
+    }
+    trustHost.innerHTML = trustItems.join('');
+
+    $('#skillSourceEns').textContent = name;
+    const uriEl = $('#skillSourceUri');
+    uriEl.innerHTML = '';
+    if (!uri) {
+      uriEl.textContent = '—';
+    } else {
+      const short = uri.length > 24 ? uri.slice(0, 12) + '…' + uri.slice(-8) : uri;
+      let href = null;
+      if (uri.startsWith('0g://')) href = `https://storagescan-galileo.0g.ai/file/${uri.slice(5)}`;
+      else if (uri.startsWith('ipfs://')) href = `https://w3s.link/ipfs/${uri.slice(7)}`;
+      else if (uri.startsWith('https://')) href = uri;
+      if (href) {
+        const a = document.createElement('a');
+        a.href = href;
+        a.target = '_blank';
+        a.rel = 'noreferrer';
+        a.textContent = short;
+        a.title = `Open ${href}`;
+        a.style.color = 'var(--color-deep-cosmos)';
+        a.style.textDecoration = 'underline';
+        a.style.textUnderlineOffset = '2px';
+        uriEl.appendChild(a);
+      } else {
+        uriEl.textContent = short;
+      }
+    }
+    $('#skillSourcePath').textContent = cached
+      ? 'cached · auth via bridge'
+      : (scheme === 'ipfs' ? 'IPFS gateway' : scheme === 'https' ? 'HTTPS direct' : '—');
+    $('#skillUseSnippet').textContent = `Use ${name}`;
+  }
+
+  function setActiveTab(paneId) {
+    $$('.skill-tab').forEach(t => t.classList.toggle('active', t.dataset.pane === paneId));
+    $$('.skill-pane').forEach(p => { p.hidden = p.dataset.pane !== paneId; });
+  }
+  $$('.skill-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      if (t.classList.contains('disabled')) return;
+      const pane = t.dataset.pane;
+      if (pane) setActiveTab(pane);
+    });
+  });
+
+  $('#skillCopyBtn')?.addEventListener('click', () => {
+    const txt = $('#skillUseSnippet').textContent;
+    navigator.clipboard?.writeText(txt);
+    const btn = $('#skillCopyBtn');
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = orig; }, 1200);
+  });
+
+  function openDetailFromCacheOrResolve(name) {
+    setActiveTab('readme');
+    const r = resolvedCache.get(name);
+    if (r) {
+      renderSkillDetail(name, r.manifest, r.cid, r.ms, r.cached);
+      $('#skillDetail').hidden = false;
+      return;
+    }
+    if (MANIFEST_CACHE[name]) {
+      renderSkillDetail(name, MANIFEST_CACHE[name], `(cached) ${name}`, 0, true);
+      $('#skillDetail').hidden = false;
+      resolveSkill(name, 'sepolia').then(fresh => {
+        resolvedCache.set(name, fresh);
+        renderSkillDetail(name, fresh.manifest, fresh.cid, fresh.ms, fresh.cached);
+      }).catch(() => { /* keep cached preview */ });
+      return;
+    }
+    resolveSkill(name, 'sepolia').then(r => {
+      resolvedCache.set(name, r);
+      renderSkillDetail(name, r.manifest, r.cid, r.ms, r.cached);
+      $('#skillDetail').hidden = false;
+    }).catch(e => {
+      $('#skillDetailName').textContent = 'Resolution failed';
+      $('#skillReadmeDesc').textContent = e.message ?? String(e);
+      $('#skillDetail').hidden = false;
+    });
+  }
+
+  function closeDetail() {
+    $('#skillDetail').hidden = true;
+    if (location.hash.startsWith('#/skill/')) {
+      history.pushState('', '', location.pathname + location.search);
+    }
+  }
+
+  function syncDetailFromHash() {
+    const m = /^#\/skill\/(.+)$/.exec(location.hash);
+    if (m) openDetailFromCacheOrResolve(decodeURIComponent(m[1]));
+    else $('#skillDetail').hidden = true;
+  }
+
+  $('#skillBack').addEventListener('click', closeDetail);
+  $('#skillClose').addEventListener('click', closeDetail);
+  // Skill catalog rows on the right bento — click navigates to detail.
+  // Listeners only attach to the dark-layer originals; clicks on cloned
+  // light-layer rows fall through (pointer-events: none on .light-layer).
+  $$('.catalog-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const name = row.dataset.skill;
+      if (!name) return;
+      $('#ensInput').value = name;
+      pushBridgeEvent(`OPEN · ${name} · catalog`);
+      bumpHeat(name);
+      location.hash = `#/skill/${encodeURIComponent(name)}`;
+      openDetailFromCacheOrResolve(name);
+    });
+  });
+  window.addEventListener('hashchange', syncDetailFromHash);
+
+  // ─── Real keyboard shortcuts ─────────────────────────────────────────
+  // Vim-style g-prefix sequence for GitHub jumps; "/" focuses search.
+  // Esc was already wired earlier to close the skill detail overlay.
+  let gPrefix = false;
+  let gPrefixTimer = null;
+  window.addEventListener('keydown', (e) => {
+    const inField = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
+    if (e.key === '/' && !inField) {
+      e.preventDefault();
+      const inp = $('#ensInput');
+      if (inp) { inp.focus(); inp.select?.(); }
+      return;
+    }
+    if (e.key === 'g' && !inField) {
+      gPrefix = true;
+      clearTimeout(gPrefixTimer);
+      gPrefixTimer = setTimeout(() => { gPrefix = false; }, 1200);
+      return;
+    }
+    if (gPrefix && (e.key === 'r' || e.key === 'i')) {
+      gPrefix = false;
+      const url = e.key === 'r'
+        ? 'https://github.com/hien-p/Skillname'
+        : 'https://github.com/hien-p/Skillname/issues';
+      window.open(url, '_blank', 'noopener');
+    }
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#skillDetail').hidden) closeDetail();
+  });
+  // On cold load, restore detail view if URL carries the route.
+  if (location.hash.startsWith('#/skill/')) syncDetailFromHash();
 
   $('#resolveBtn').addEventListener('click', runResolve);
   $('#ensInput').addEventListener('keydown', (e) => {
@@ -1311,47 +2639,7 @@
   // auto-resolve once on load so the live page is never empty
   runResolve();
 
-  const glyphGrid = $('#glyphGrid');
-  const ROWS = 7, COLS = 11;
-  for (let i = 0; i < ROWS * COLS; i++) {
-    const d = document.createElement('div');
-    d.className = 'd';
-    glyphGrid.appendChild(d);
-  }
-  const glyphCells = $$('.d', glyphGrid);
-
-  const glyphPatterns = [
-    (i, r, c) => (r + c) % 2 === 0,
-    (i, r, c, t) => ((r + c + Math.floor(t/2)) % 4) < 2,
-    (i, r, c, t) => {
-      const dx = c - 5, dy = r - 3;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      return Math.abs(dist - (t % 6)) < 0.9;
-    },
-    (i, r, c, t) => {
-      const seed = (r * 13 + c * 7 + t * 3) % 11;
-      return seed > 6;
-    },
-    (i, r, c, t) => r === Math.floor(3 + 2 * Math.sin((c + t) * 0.5)),
-    (i, r, c, t) => c === ((t * 2) % COLS) || c === ((t * 2 + 5) % COLS),
-  ];
-
-  let glyphTick = 0;
-  let glyphPatternIdx = 2;
-  function renderGlyph() {
-    const fn = glyphPatterns[glyphPatternIdx];
-    glyphCells.forEach((cell, i) => {
-      const r = Math.floor(i / COLS), c = i % COLS;
-      cell.classList.toggle('on', !!fn(i, r, c, glyphTick));
-    });
-    glyphTick++;
-  }
-  renderGlyph();
-  setInterval(renderGlyph, 700);
-  setInterval(() => {
-    glyphPatternIdx = (glyphPatternIdx + 1) % glyphPatterns.length;
-    glyphTick = 0;
-  }, 6000);
+  // Glyph dot-pattern widget removed when card was repurposed to Skill catalog.
 
   function pad(n) { return String(n).padStart(2, '0'); }
   function tick() {
@@ -1403,19 +2691,7 @@
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
   }
-  const latData = Array.from({length: 24}, (_, i) =>
-    180 + Math.sin(i * 0.6) * 18 + Math.random() * 10
-  );
-  $('#latencyPath').setAttribute('d', sparkPath(latData));
-
-  setInterval(() => {
-    latData.shift();
-    latData.push(160 + Math.random() * 50);
-    $$('.spark-svg').forEach(svg => {
-      const p = svg.querySelector('#latencyPath, .draw-in');
-      if (p) p.setAttribute('d', sparkPath(latData));
-    });
-  }, 3000);
+  // Latency sparkline removed when card was repurposed to TOTAL TOOLS.
 
   function buildBar(parent, segs, on, warn=null) {
     parent.innerHTML = '';
@@ -1427,24 +2703,8 @@
       parent.appendChild(s);
     }
   }
-  buildBar($('#cpuBar'), 14, 5);
-  buildBar($('#gasBar'), 18, 4);
-
-  setInterval(() => {
-    const cpu = 32 + Math.floor(Math.random() * 22);
-    $('#cpuNum').innerHTML = `${cpu}<span style="font-size:18px;color:var(--text-secondary);font-weight:400;letter-spacing:0.04em">%</span>`;
-    const lit = Math.round((cpu / 100) * 14);
-    buildBar($('#cpuBar'), 14, lit);
-    syncLightLayer();
-  }, 3500);
-
-  setInterval(() => {
-    const g = (0.04 + Math.random() * 0.12).toFixed(2);
-    $('#gasNum').innerHTML = `${g}<small>GWEI</small>`;
-    const lit = Math.round((parseFloat(g) / 0.20) * 18);
-    buildBar($('#gasBar'), 18, lit);
-    syncLightLayer();
-  }, 4200);
+  // Bridge CPU + base-fee animation loops removed when those cards were
+  // repurposed to IMPORT EDGES + EXECUTORS mix bar.
 
   const waveBars = $('#waveBars');
   for (let i = 0; i < 56; i++) {
@@ -1509,9 +2769,13 @@
     'LOCKFILE PINNED · ipfs://bafy...lock · OK',
     'BRIDGE READY · stdio · MCP 0.6.0',
   ];
+  // Bridge feed = real session events. Boot messages still show on cold load
+  // so the ticker isn't empty; once the user resolves anything, real events
+  // (RESOLVED, OPEN, CONNECT) take over by getting unshift'd to the queue.
   let msgIdx = 0;
+  let eventCount = 0;
   function typeMsg() {
-    const msg = messages[msgIdx];
+    const msg = messages[msgIdx % messages.length];
     const target = $('#tickerMsg');
     target.textContent = '';
     let i = 0;
@@ -1521,11 +2785,23 @@
       if (i <= msg.length) setTimeout(step, 22);
     }
     step();
-    msgIdx = (msgIdx + 1) % messages.length;
-    $('#feedCount').textContent = String(28 + msgIdx).padStart(3, '0') + ' EVENTS';
+    msgIdx++;
+    $('#feedCount').textContent = String(28 + eventCount).padStart(3, '0') + ' EVENTS';
   }
   typeMsg();
   setInterval(() => { typeMsg(); syncLightLayer(); }, 4500);
+
+  // Real session-event push — call from runResolve / catalog clicks / detail
+  // open. Inserts at the front of the queue and immediately renders so the
+  // user sees their action reflected in the bridge feed.
+  function pushBridgeEvent(text) {
+    messages.unshift(text);
+    if (messages.length > 14) messages.length = 14;
+    msgIdx = 0;
+    eventCount++;
+    typeMsg();
+    syncLightLayer();
+  }
 
   function ecgPath() {
     const W = 400, H = 80, MID = H / 2;
@@ -1547,18 +2823,37 @@
     syncLightLayer();
   }, 1800);
 
+  // Bundle calls heatmap → live "Skills resolved this session" tracker.
+  // 140 cells (20×7) divided across 6 demo skills → ~23 cells per skill.
+  // Each unique resolve fills the next slice with chartreuse (data-l="5").
   const heat = $('#heatGrid');
+  const heatCells = [];
   for (let i = 0; i < 20 * 7; i++) {
     const cell = document.createElement('div');
     cell.className = 'h';
-    const r = Math.random();
-    let l = 0;
-    if (r > 0.92) l = 4;
-    else if (r > 0.78) l = 3;
-    else if (r > 0.58) l = 2;
-    else if (r > 0.36) l = 1;
-    cell.dataset.l = l;
+    cell.dataset.l = '0';
     heat.appendChild(cell);
+    heatCells.push(cell);
+  }
+  const sessionResolved = new Set();
+  const TOTAL_DEMO = 6;
+  function bumpHeat(name) {
+    if (!name || sessionResolved.has(name)) return;
+    sessionResolved.add(name);
+    const filled = sessionResolved.size;
+    const target = Math.min(heatCells.length, Math.floor((filled / TOTAL_DEMO) * heatCells.length));
+    for (let i = 0; i < target; i++) heatCells[i].dataset.l = '5';
+    // Rewrite the card's title meta from fake "L30D · 12'441" to live count.
+    const heatCard = heat.closest('.heat');
+    if (heatCard) {
+      const lbl = heatCard.querySelector(':scope > div .label');
+      if (lbl) lbl.innerHTML = `SESSION · <b style="color:var(--text-display);font-weight:700">${filled} / ${TOTAL_DEMO}</b>`;
+      const foot = heatCard.querySelector('.heat-foot .label:first-child');
+      if (foot) foot.textContent = filled === 0
+        ? 'CLICK CATALOG TO FILL'
+        : `${filled} UNIQUE SKILLS RESOLVED`;
+    }
+    syncLightLayer();
   }
 
   const ticks = $('#tunerTicks');
@@ -1661,6 +2956,202 @@
   window.addEventListener('touchend', onUp);
 
   setInterval(syncLightLayer, 1000);
+
+  // ─── Publish skill flow ──────────────────────────────────────────────
+  // Wallet connect (EIP-1193 injected) + manifest builder + on-chain bind
+  // (setSubnodeRecord + setText × 3) against Sepolia ENS PublicResolver.
+  // Same contract addresses as scripts/register-skills.ts.
+  const ENS_SEPOLIA_REGISTRY = '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e';
+  const ENS_SEPOLIA_RESOLVER = '0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5';
+  const ENS_REGISTRY_ABI = parseAbi([
+    'function setSubnodeRecord(bytes32 node, bytes32 label, address owner, address resolver, uint64 ttl)',
+    'function owner(bytes32 node) view returns (address)',
+  ]);
+  const ENS_RESOLVER_ABI = parseAbi([
+    'function setText(bytes32 node, string calldata key, string calldata value)',
+  ]);
+
+  let walletClient = null;
+  let walletAddress = null;
+
+  function setStatus(state, text) {
+    const el = $('#pf-status');
+    el.className = `publish-status ${state}`;
+    el.textContent = text;
+  }
+
+  function buildManifest() {
+    const name = $('#pf-name').value.trim();
+    const ensName = `${$('#pf-label').value.trim()}.${$('#pf-parent').value.trim()}`;
+    const version = $('#pf-version').value.trim() || '1.0.0';
+    const license = $('#pf-license').value.trim() || 'MIT';
+    const description = $('#pf-desc').value.trim();
+    const toolName = $('#pf-tool-name').value.trim();
+    const toolDesc = $('#pf-tool-desc').value.trim();
+    const exec = document.querySelector('input[name="exec"]:checked')?.value || 'http';
+    const endpoint = $('#pf-endpoint').value.trim();
+    const tool = {
+      name: toolName || 'unnamed',
+      description: toolDesc || '',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: true },
+      execution: exec === 'http'
+        ? { type: 'http', endpoint: endpoint || 'https://example.com', method: 'GET' }
+        : { type: exec },
+    };
+    return {
+      $schema: 'https://manifest.eth/schemas/skill-v1.json',
+      name: name || 'unnamed',
+      ensName,
+      version,
+      license,
+      description,
+      tools: [tool],
+      trust: { ensip25: { enabled: false } },
+    };
+  }
+
+  function manifestValid(m) {
+    if (!/^[a-z0-9-]+$/.test(m.name)) return false;
+    if (!/^([a-z0-9-]+\.)+eth$/.test(m.ensName)) return false;
+    if (!m.description) return false;
+    if (!m.tools[0]?.name || !/^[a-z][a-z0-9_]*$/.test(m.tools[0].name)) return false;
+    return true;
+  }
+
+  function refreshPreview() {
+    const m = buildManifest();
+    $('#pf-fullname').textContent = `→ ${m.ensName}`;
+    $('#pf-preview').textContent = JSON.stringify(m, null, 2);
+    const valid = manifestValid(m);
+    const cid = $('#pf-cid').value.trim();
+    const pill = $('#pf-schema-pill');
+    pill.classList.toggle('valid', valid);
+    $('#pf-schema-state').textContent = valid ? 'valid' : 'incomplete';
+    const canPublish = valid && cid.length > 5 && walletClient;
+    $('#pf-publish').disabled = !canPublish;
+  }
+
+  function bindFormInputs() {
+    const ids = ['pf-parent','pf-label','pf-name','pf-version','pf-license','pf-desc',
+                 'pf-tool-name','pf-tool-desc','pf-endpoint','pf-cid'];
+    ids.forEach(id => $('#' + id)?.addEventListener('input', refreshPreview));
+    $$('input[name="exec"]').forEach(r => r.addEventListener('change', () => {
+      $('#pf-endpoint-row').style.display = r.value === 'http' && r.checked ? '' : 'none';
+      $$('.exec-radio label').forEach(lbl => lbl.classList.remove('selected'));
+      r.parentElement.classList.add('selected');
+      refreshPreview();
+    }));
+    // Initialize selected radio label visual
+    const initRadio = document.querySelector('input[name="exec"]:checked');
+    if (initRadio) initRadio.parentElement.classList.add('selected');
+  }
+
+  async function connectWallet() {
+    try {
+      if (!window.ethereum) {
+        setStatus('err', 'No injected wallet found. Install MetaMask or Rabby.');
+        return;
+      }
+      walletClient = createWalletClient({ chain: sepolia, transport: custom(window.ethereum) });
+      const [addr] = await walletClient.requestAddresses();
+      walletAddress = addr;
+      $('#publishWallet').textContent = `${addr.slice(0,6)}…${addr.slice(-4)} · sepolia`;
+      $('#publishConnect').textContent = 'Reconnect';
+      pushBridgeEvent(`WALLET · ${addr.slice(0,6)}…${addr.slice(-4)} connected`);
+      // Try chain switch if not already on Sepolia.
+      try { await walletClient.switchChain({ id: sepolia.id }); } catch {}
+      refreshPreview();
+    } catch (e) {
+      setStatus('err', `connect failed: ${e.shortMessage ?? e.message}`);
+    }
+  }
+
+  async function publishSkill() {
+    if (!walletClient || !walletAddress) {
+      setStatus('err', 'Connect wallet first.'); return;
+    }
+    const m = buildManifest();
+    if (!manifestValid(m)) { setStatus('err', 'Manifest is incomplete or invalid.'); return; }
+    const cid = $('#pf-cid').value.trim();
+    if (!cid) { setStatus('err', 'Paste a pinned manifest CID first.'); return; }
+
+    const parent = $('#pf-parent').value.trim();
+    const label = $('#pf-label').value.trim();
+    const fullName = `${label}.${parent}`;
+    const parentNode = namehash(parent);
+    const labelHash = keccak256(toBytes(label));
+    const subNode = namehash(fullName);
+
+    setStatus('busy', `Step 1 · setSubnodeRecord(${fullName})`);
+    $('#pf-publish').disabled = true;
+    pushBridgeEvent(`PUBLISH · ${fullName} · setSubnodeRecord`);
+
+    try {
+      const tx1 = await walletClient.writeContract({
+        account: walletAddress,
+        address: ENS_SEPOLIA_REGISTRY,
+        abi: ENS_REGISTRY_ABI,
+        functionName: 'setSubnodeRecord',
+        args: [parentNode, labelHash, walletAddress, ENS_SEPOLIA_RESOLVER, 0n],
+      });
+      setStatus('busy', `Subname tx ${tx1.slice(0,10)}… · waiting for inclusion + setText × 3`);
+
+      const records = [
+        ['xyz.manifest.skill', `ipfs://${cid}`],
+        ['xyz.manifest.skill.version', m.version],
+        ['xyz.manifest.skill.schema', 'https://manifest.eth/schemas/skill-v1.json'],
+      ];
+      let lastTx = tx1;
+      for (const [k, v] of records) {
+        setStatus('busy', `setText(${k} = ${v.length > 24 ? v.slice(0,12)+'…'+v.slice(-8) : v})`);
+        lastTx = await walletClient.writeContract({
+          account: walletAddress,
+          address: ENS_SEPOLIA_RESOLVER,
+          abi: ENS_RESOLVER_ABI,
+          functionName: 'setText',
+          args: [subNode, k, v],
+        });
+        pushBridgeEvent(`SETTEXT · ${k} → ${tx1.slice(0,10)}…`);
+      }
+
+      setStatus('ok', `✓ ${fullName} bound · 4 tx submitted · last ${lastTx.slice(0,12)}…`);
+      const link = $('#pf-tx-link');
+      link.href = `https://sepolia.etherscan.io/tx/${lastTx}`;
+      link.textContent = `View last tx on Etherscan ↗`;
+      link.style.display = 'inline-block';
+      bumpHeat(fullName);
+      // Add to runtime cache so the catalog/detail can resolve it.
+      MANIFEST_CACHE[fullName] = m;
+    } catch (e) {
+      setStatus('err', `tx failed: ${e.shortMessage ?? e.message}`);
+    } finally {
+      $('#pf-publish').disabled = false;
+    }
+  }
+
+  function openPublish() {
+    $('#publishOverlay').hidden = false;
+    refreshPreview();
+  }
+  function closePublish() {
+    $('#publishOverlay').hidden = true;
+  }
+
+  $('#publishOpen').addEventListener('click', openPublish);
+  $('#publishBack').addEventListener('click', closePublish);
+  $('#publishClose').addEventListener('click', closePublish);
+  $('#publishConnect').addEventListener('click', connectWallet);
+  $('#pf-publish').addEventListener('click', publishSkill);
+  $('#pf-download').addEventListener('click', () => {
+    const m = buildManifest();
+    const blob = new Blob([JSON.stringify(m, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'manifest.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
+  bindFormInputs();
+  refreshPreview();
 </script>
 
 </body>
