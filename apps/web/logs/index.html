@@ -586,9 +586,112 @@
         <section class="day-section" id="day-7">
           <div class="day-header">
             <div class="day-num">D7</div>
-            <div class="day-name">storage pivot · revert · env wiring</div>
+            <div class="day-name">0G Compute · ledger init · CI greens</div>
             <div class="label">2026·04·30 · WED · TODAY</div>
           </div>
+
+          <article class="card entry">
+            <div class="hover-flag">DEVLOG</div>
+            <div class="entry-time">15:55 · STAGING</div>
+            <div class="entry-title">0G Compute ledger bootstrap + auto-init in <code>executeVia0GCompute</code></div>
+            <ul>
+              <li><code>scripts/setup-0g-ledger.ts</code> — one-shot: <code>broker.ledger.addLedger(0.05)</code> + <code>transferFund(provider, 'inference', 0.02 OG)</code></li>
+              <li>Bridge executor gains <code>OG_AUTO_INIT_LEDGER=1</code> path: catches <em>"Sub-account not found"</em>, runs init, retries the inference call once</li>
+              <li>Failure message now points operators at the script if init isn't enabled — no more cryptic <code>transfer-fund</code> hint</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">setup-0g-ledger run</div>
+              <div class="proof">e2e green inference</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/commits/staging" target="_blank">view staging </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #39</div>
+            <div class="entry-time">15:30 · OPEN</div>
+            <div class="entry-title">unblock Cloudflare Pages deploy after monorepo growth</div>
+            <ul>
+              <li>PR #33 promoted <code>apps/*</code> to a workspace, which made <code>pnpm add wrangler</code> bail with <code>ERR_PNPM_ADDING_TO_ROOT</code> inside <code>cloudflare/wrangler-action@v3</code></li>
+              <li>Set <code>NPM_CONFIG_IGNORE_WORKSPACE_ROOT_CHECK=true</code> on just the deploy step — local dev + lockfile untouched</li>
+              <li>Restores <code>staging.skillname.pages.dev</code> auto-deploy on every push to <code>staging</code></li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #39 diff</div>
+              <div class="proof">deploy run green</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/39" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #38</div>
+            <div class="entry-time">15:20 · MERGED</div>
+            <div class="entry-title">e2e workflow: build <code>@skillname/schema</code> before <code>sdk</code></div>
+            <ul>
+              <li>SDK build was failing with <code>TS2307: Cannot find module '@skillname/schema'</code> — schema's <code>dist/</code> didn't exist yet in CI</li>
+              <li>Implicit-any on <code>validateBundle</code> errors was a downstream symptom of the missing types — single fix solved both</li>
+              <li>Confirms PR #37's e2e harness now exercises the full build chain in CI</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">workflow diff</div>
+              <div class="proof">CI green build</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/38" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #33</div>
+            <div class="entry-time">15:17 · MERGED</div>
+            <div class="entry-title">x402 payment gateway + KeeperHub MCP client (rebased into staging)</div>
+            <ul>
+              <li>New <code>apps/keeperhub-paid/</code> Hono server: returns 402 → validates EIP-3009 USDC → calls <code>execute_contract_call</code> → returns BaseScan tx</li>
+              <li>Bridge gains <code>keeperhub.ts</code>: <code>wrapFetchWithPayment</code> client signs the authorization on Base Sepolia automatically</li>
+              <li>Bumped <code>@modelcontextprotocol/sdk</code> to <code>^1.29.0</code> for <code>StreamableHTTPClientTransport</code> — needed by the paid server's KeeperHub bridge</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #33 diff</div>
+              <div class="proof">x402 sequence diagram</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/33" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #34</div>
+            <div class="entry-time">15:11 · MERGED</div>
+            <div class="entry-title">CLI <code>resolve</code> / <code>verify</code> / <code>init</code> commands (rebased into staging)</div>
+            <ul>
+              <li><code>skill resolve &lt;ens&gt;</code> walks ENS text records → CID → bundle, prints tools + ENSIP-25 status; <code>--json</code> for machine output</li>
+              <li><code>skill verify &lt;ens&gt;</code> re-runs schema validation + atomicity check (1 tool per skill) + name pattern checks</li>
+              <li><code>skill init &lt;name&gt;</code> scaffolds a bundle directory with the v1 manifest template</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">PR #34 diff</div>
+              <div class="proof">CLI demo run</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/34" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">9B0705F</div>
+            <div class="entry-time">13:10 · MERGED</div>
+            <div class="entry-title">0G Compute Network integration — real <code>execution.type: 0g-compute</code></div>
+            <ul>
+              <li>New <code>bridge/src/0gcompute.ts</code> executor + <code>zg_list_providers</code> built-in MCP tool (read-only, no wallet)</li>
+              <li>Live providers discovered on Galileo (chain 16602): <code>0xa48f012…</code> running <code>qwen/qwen-2.5-7b-instruct</code></li>
+              <li>Schema + SDK extended with the <code>0g-compute</code> execution variant; <code>examples/infer-0g</code> reference bundle ships with real provider address</li>
+              <li>Loads the broker via <code>createRequire</code> — works around a broken ESM rollup chunk on Node ≥24</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">infer-0g manifest</div>
+              <div class="proof">zg_list_providers output</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/commit/9b0705f" target="_blank">view commit </a>
+          </article>
 
           <article class="card entry">
             <div class="hover-flag">DEVLOG</div>
