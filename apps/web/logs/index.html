@@ -587,9 +587,28 @@
         <section class="day-section" id="day-8">
           <div class="day-header">
             <div class="day-num">D8</div>
-            <div class="day-name">skill explorer · ENSIP draft · review queue</div>
+            <div class="day-name">skill explorer · ENSIP draft · review queue · #10 closed</div>
             <div class="label">2026·05·01 · THU · TODAY</div>
           </div>
+
+          <article class="card entry">
+            <div class="hover-flag">ISSUE #10</div>
+            <div class="entry-time">09:55 · CLOSED</div>
+            <div class="entry-title">All 5 <code>*.skilltest.eth</code> subnames now resolve — atomic ENS resolution complete</div>
+            <ul>
+              <li>Discovered only <code>quote.skilltest.eth</code> had <code>xyz.manifest.skill</code> set; <code>hello</code> / <code>swap</code> / <code>score</code> / <code>weather</code> were registered but text-record empty</li>
+              <li>Wrote <code>scripts/verify-issue-10.cjs</code> to assert text records exist on all 5 names; reads from a public Sepolia RPC, no SDK build needed</li>
+              <li>Re-dispatched <code>pin-and-register</code> for the four missing slugs against <code>main</code>; sequenced through the workflow's concurrency group (<code>cancel-in-progress: false</code> drops older queued runs in favor of the latest)</li>
+              <li>Final state: 5/5 resolve cleanly with <code>0g://0x…</code> URIs and <code>v=1.0.0</code> on every name</li>
+              <li>Confirmed schema validator + <code>@helia/verified-fetch</code> are already wired in <code>packages/sdk/src/index.ts</code> at lines 14, 182, 217–227 — the issue body's "currently commented out" note was stale</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">verify-issue-10 output</div>
+              <div class="proof">issue #10 resolution comment</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/issues/10#issuecomment-4357561270" target="_blank">view issue </a>
+          </article>
 
           <article class="card entry">
             <div class="hover-flag">PR #43</div>
