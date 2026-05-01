@@ -587,9 +587,27 @@
         <section class="day-section" id="day-8">
           <div class="day-header">
             <div class="day-num">D8</div>
-            <div class="day-name">skill explorer · ENSIP draft · review queue · #10 closed · contract execution type</div>
+            <div class="day-name">skill explorer · ENSIP draft · review queue · #10 closed · contract execution type · x402 e2e</div>
             <div class="label">2026·05·01 · THU · TODAY</div>
           </div>
+
+          <article class="card entry">
+            <div class="hover-flag">DEVLOG</div>
+            <div class="entry-time">10:25 · STAGING</div>
+            <div class="entry-title">x402 challenge layer verified + full e2e test scaffolded</div>
+            <ul>
+              <li>Boot-and-curl smoke against <code>apps/keeperhub-paid</code> with stub env returns <code>HTTP 402 Payment Required</code> with a spec-compliant <code>payment-required</code> header (x402Version: 2, scheme: exact, network: eip155:84532, amount: 50000 = 0.05 USDC, asset: 0x036CbD…3dCF7e Base Sepolia USDC)</li>
+              <li>Confirms <code>paymentMiddleware(routes, resourceServer)</code> + <code>HTTPFacilitatorClient(x402.org/facilitator)</code> + <code>ExactEvmScheme</code> are wired end-to-end at the gateway layer</li>
+              <li>New <code>apps/keeperhub-paid/test/e2e.ts</code> spawns the server on a free port, sends an unauthenticated POST (asserts 402), then retries via <code>wrapFetchWithPayment(fetch, x402Client)</code> which signs an EIP-3009 USDC <code>transferWithAuthorization</code> and asserts a BaseScan tx URL in the response</li>
+              <li>Added <code>docs/X402_E2E.md</code> with step-by-step source for each required value: <code>AGENT_WALLET_PRIVATE_KEY</code> (fresh hot key), Base Sepolia ETH (Coinbase faucet) + USDC (Circle faucet), <code>PAY_TO_ADDRESS</code> (your operator wallet)</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">decoded payment-required header</div>
+              <div class="proof">e2e test output</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/blob/staging/docs/X402_E2E.md" target="_blank">view docs </a>
+          </article>
 
           <article class="card entry">
             <div class="hover-flag">FEATURE</div>
@@ -599,7 +617,7 @@
               <li>Adds a fifth execution variant alongside <code>local</code> / <code>http</code> / <code>keeperhub</code> / <code>0g-compute</code>: bundle declares <code>{ chainId, address, abi, method, mode }</code> and the bridge dispatches via viem</li>
               <li>Schema (<code>skill-v1.schema.json</code>): <code>ContractExecution</code> definition + <code>oneOf</code> entry; address pattern accepts either <code>0x…</code> or <code>*.eth</code> for late-bound resolution</li>
               <li>SDK (<code>packages/sdk/src/index.ts</code>): extends the <code>Execution</code> union — keeps the "all three layers must agree" rule from <code>CLAUDE.md</code></li>
-              <li>Bridge (<code>packages/bridge/src/server.ts</code>): <code>executeContract()</code> handles ENS-name addresses via mainnet resolution, maps named-args → positional via <code>inputSchema.properties</code> order, and uses a chain-keyed <code>publicClient</code> cache; <code>read</code> mode hits <code>readContract</code>, <code>write</code> mode signs with <code>AGENT_WALLET_PRIVATE_KEY</code>; <code>BigInt</code> results JSON-serialize cleanly</li>
+              <li>Bridge (<code>packages/bridge/src/server.ts</code>): <code>executeContract()</code> handles ENS-name addresses via mainnet resolution, maps named-args → positional via the ABI's parameter names, and uses a chain-keyed <code>publicClient</code> cache; <code>read</code> mode hits <code>readContract</code>, <code>write</code> mode signs with <code>AGENT_WALLET_PRIVATE_KEY</code>; <code>BigInt</code> results JSON-serialize cleanly</li>
               <li>Paid <code>contract.write</code> deferred — returns a clear "use type:keeperhub" error until x402 routing lands here</li>
             </ul>
             <div class="proof-label label">image (proof of work):</div>
