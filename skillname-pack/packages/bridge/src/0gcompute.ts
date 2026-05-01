@@ -40,7 +40,9 @@ const OG_AUTO_INIT_LEDGER = process.env.OG_AUTO_INIT_LEDGER === '1'
 const SUB_ACCOUNT_MISSING = /sub-account not found|account does not exist|transfer-fund/i
 
 // Per-call init defaults (only used when OG_AUTO_INIT_LEDGER=1).
-const AUTO_LEDGER_DEPOSIT = 0.05 // OG, master ledger
+// 0G Compute requires a minimum 3 OG to create a ledger.
+// Smaller deposits get rejected with: "Minimum balance to create a ledger is 3 0G"
+const AUTO_LEDGER_DEPOSIT = 3 // OG, master ledger
 const AUTO_PROVIDER_FUND_WEI = 20000000000000000n // 0.02 OG, sub-account
 
 // Avoid hammering the broker if init already ran in this process.

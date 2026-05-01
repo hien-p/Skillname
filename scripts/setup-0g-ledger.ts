@@ -33,7 +33,8 @@ const KEY = process.env.OG_COMPUTE_PRIVATE_KEY ?? process.env.SEPOLIA_PRIVATE_KE
 
 const DEFAULT_PROVIDER = '0xa48f01287233509FD694a22Bf840225062E67836'
 // Total deposit into the master ledger (OG, as a number per SDK signature).
-const LEDGER_DEPOSIT = 0.05
+// 0G Compute enforces a 3 OG minimum — smaller values are rejected.
+const LEDGER_DEPOSIT = 3
 // Per-provider sub-account allocation (wei-style bigint, 18 decimals).
 const PROVIDER_FUND = ethers.parseEther('0.02')
 
@@ -55,8 +56,9 @@ const targetProvider = process.argv[2] ?? DEFAULT_PROVIDER
 
   const balance = await provider.getBalance(wallet.address)
   console.log(`OG balance: ${ethers.formatEther(balance)} OG`)
-  if (balance < ethers.parseEther('0.03')) {
-    console.error('Need at least ~0.03 OG. Top up at https://faucet.0g.ai')
+  // 3 OG ledger min + 0.02 OG sub-account + ~0.05 gas headroom
+  if (balance < ethers.parseEther('3.1')) {
+    console.error('Need at least ~3.1 OG. Hackathon faucet: https://0g-faucet-hackathon.vercel.app/ (promo: OPEN-AGENT)')
     process.exit(1)
   }
 
