@@ -17,6 +17,7 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 ## 1. UX / UI friction
 
 ### F-001 — [DATE] — [Severity: low/med/high]
+
 **Where:** [page/tool/screen]
 **What confused us:** [specific description]
 **What we expected:** [...]
@@ -30,16 +31,20 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 
 ## 2. Reproducible bugs
 
-### B-001 — [DATE] — [Severity]
-**Tool / endpoint:** [...]
+### B-001 — 2026-05-01 — High
+
+**Tool / endpoint:** `execute_transfer` via `https://app.keeperhub.com/mcp`
 **Steps to reproduce:**
-1. [...]
-2. [...]
-3. [...]
-**Expected:** [...]
-**Actual:** [...]
-**Workaround:** [...]
-**Logs / tx hash / screenshot:** [link]
+
+1. Connect to KeeperHub MCP with `StreamableHTTPClientTransport` + Bearer token
+2. Call `execute_transfer` with `{ network: "84532", to: "0x5c11...", amount: "0.01", token: "USDC" }`
+3. Observe response
+   **Expected:** Execution ID returned, tx submitted on Base Sepolia
+   **Actual:** 502 Bad Gateway from `app.keeperhub.com`
+   **Workaround:** Retry later; no client-side fix possible
+   **Logs / tx hash / screenshot:** Claude Desktop session, 2026-05-01 19:10 ICT. Full x402 payment flow completed successfully up to the KeeperHub call.
+   **Workaround:** [...]
+   **Logs / tx hash / screenshot:** [link]
 
 <!-- Aim for 1-2 reproducible bugs. Even if minor, specificity wins. -->
 
@@ -48,6 +53,7 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 ## 3. Documentation gaps
 
 ### D-001 — [DATE]
+
 **Doc page:** [URL]
 **What we needed:** [...]
 **What was missing:** [...]
@@ -61,6 +67,7 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 ## 4. Feature requests
 
 ### R-001 — [DATE]
+
 **Use case:** [what we were building when we wished for this]
 **Request:** [specific feature]
 **Why this matters:** [downstream value]

@@ -92,26 +92,46 @@ app.use("/execute", paymentMiddleware(routes, resourceServer));
 
 app.post("/execute", async (c) => {
   const body = await c.req.json<{
-    contract_address: string;
+    contract_address?: string;
     network: string;
-    function_name: string;
+    function_name?: string;
     function_args?: string;
     abi?: string;
+    // execute_transfer fields
+    to?: string;
+    amount?: string;
+    token?: string;
   }>();
 
   try {
     const kh = await getKeeperHub();
 
-    const args: Record<string, string> = {
-      contract_address: body.contract_address,
-      network: body.network,
-      function_name: body.function_name,
-    };
-    if (body.function_args) args.function_args = body.function_args;
-    if (body.abi) args.abi = body.abi;
+    // Route to execute_transfer if 'to' and 'amount' are present
+    const isTransfer = body.to && body.amount;
+    let khToolName: string;
+    let args: Record<string, string>;
+
+    if (isTransfer) {
+      khToolName = "execute_transfer";
+      args = {
+        network: body.network,
+        to: body.to!,
+        amount: body.amount!,
+        token: body.token ?? "USDC",
+      };
+    } else {
+      khToolName = "execute_contract_call";
+      args = {
+        contract_address: body.contract_address ?? "",
+        network: body.network,
+        function_name: body.function_name ?? "",
+      };
+      if (body.function_args) args.function_args = body.function_args;
+      if (body.abi) args.abi = body.abi;
+    }
 
     const res = await kh.callTool({
-      name: "execute_contract_call",
+      name: khToolName,
       arguments: args,
     });
     const text = khText(res);
