@@ -34,17 +34,20 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 ### B-001 — 2026-05-01 — High
 
 **Tool / endpoint:** `execute_transfer` via `https://app.keeperhub.com/mcp`
+
 **Steps to reproduce:**
 
 1. Connect to KeeperHub MCP with `StreamableHTTPClientTransport` + Bearer token
 2. Call `execute_transfer` with `{ network: "84532", to: "0x5c11...", amount: "0.01", token: "USDC" }`
 3. Observe response
-   **Expected:** Execution ID returned, tx submitted on Base Sepolia
-   **Actual:** 502 Bad Gateway from `app.keeperhub.com`
-   **Workaround:** Retry later; no client-side fix possible
-   **Logs / tx hash / screenshot:** Claude Desktop session, 2026-05-01 19:10 ICT. Full x402 payment flow completed successfully up to the KeeperHub call.
-   **Workaround:** [...]
-   **Logs / tx hash / screenshot:** [link]
+
+**Expected:** Execution ID returned, tx submitted on Base Sepolia
+
+**Actual:** 502 Bad Gateway from `app.keeperhub.com`
+
+**Workaround:** Retry later; no client-side fix possible.
+
+**Logs / tx hash / screenshot:** Claude Desktop session, 2026-05-01 19:10 ICT — full x402 payment flow completed successfully up to the KeeperHub call.
 
 <!-- Aim for 1-2 reproducible bugs. Even if minor, specificity wins. -->
 
