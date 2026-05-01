@@ -284,23 +284,61 @@
     gap: 8px;
   }
 
-  .hero-resolver .ens {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 500;
-    font-size: 24px;
-    letter-spacing: -0.01em;
-    color: var(--text-display);
-    display: inline-flex;
-    align-items: center;
+  .hero-resolver .ens-row {
+    display: flex;
     gap: 10px;
+    align-items: stretch;
   }
 
-  .hero-resolver .ens::before {
-    content: "";
-    width: 6px;
-    height: 18px;
-    background: var(--text-display);
-    animation: caret 1s steps(2) infinite;
+  .hero-resolver .ens-input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-visible);
+    padding: 4px 0 6px;
+    color: var(--text-display);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    outline: none;
+    caret-color: var(--text-display);
+    min-width: 0;
+  }
+  .hero-resolver .ens-input:focus { border-color: var(--text-display); }
+  .hero-resolver .ens-input::placeholder { color: var(--text-disabled); }
+
+  .hero-resolver .ens-go {
+    background: transparent;
+    border: 1px solid var(--border-visible);
+    color: var(--text-primary);
+    padding: 0 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hero-resolver .ens-go:hover {
+    border-color: var(--text-display);
+    color: var(--text-display);
+  }
+  .hero-resolver .ens-go:disabled {
+    opacity: 0.4;
+    cursor: wait;
+  }
+
+  .hero-resolver .ens-chain {
+    background: transparent;
+    border: 1px solid var(--border-visible);
+    color: var(--text-secondary);
+    padding: 0 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
   }
 
   @keyframes caret { 50% { opacity: 0; } }
@@ -311,6 +349,33 @@
     color: var(--text-secondary);
     letter-spacing: 0.02em;
     word-break: break-all;
+  }
+  .hero-resolver .cid.err { color: var(--accent-red); }
+  .hero-resolver .cid.ok { color: var(--success); }
+
+  .hero-tools-list {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 90px;
+    overflow-y: auto;
+  }
+  .hero-tools-list .t {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .hero-tools-list .t .t-name { color: var(--text-display); }
+  .hero-tools-list .t .t-exec {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.12em;
   }
 
   .hero-bottom {
@@ -914,9 +979,16 @@
         </div>
 
         <div class="hero-resolver">
-          <div class="label">CURRENTLY RESOLVING</div>
-          <div class="ens" id="ensName">quote.uniswap.eth</div>
-          <div class="cid" id="cidLine">ipfs://bafybeigq3kpjp7xqv2nyo5lr3p6m4w5bkhhy7g2t4zvk · verified</div>
+          <div class="label">RESOLVE AN ENS SKILL NAME</div>
+          <div class="ens-row">
+            <input id="ensInput" class="ens-input" type="text"
+                   value="quote.skilltest.eth" placeholder="quote.uniswap.eth"
+                   spellcheck="false" autocomplete="off" />
+            <button id="chainToggle" class="ens-chain" title="Toggle chain">SEPOLIA</button>
+            <button id="resolveBtn" class="ens-go">RESOLVE</button>
+          </div>
+          <div class="cid" id="cidLine">ready · press RESOLVE or hit Enter</div>
+          <div class="hero-tools-list" id="toolsList"></div>
         </div>
 
         <div class="hero-bottom">
@@ -1130,9 +1202,114 @@
 
 </div>
 
-<script>
+<script type="module">
+  import { createPublicClient, http } from 'https://esm.sh/viem@2.21.55';
+  import { mainnet, sepolia } from 'https://esm.sh/viem@2.21.55/chains';
+  import { normalize } from 'https://esm.sh/viem@2.21.55/ens';
+
   const $ = (s, c=document) => c.querySelector(s);
   const $$ = (s, c=document) => Array.from(c.querySelectorAll(s));
+
+  // ── ENS resolver wired to viem ────────────────────────────────────────
+  const clients = {
+    sepolia: createPublicClient({ chain: sepolia, transport: http() }),
+    mainnet: createPublicClient({ chain: mainnet, transport: http() }),
+  };
+  const SKILL_KEY = 'xyz.manifest.skill';
+  const IPFS_GATEWAYS = [
+    'https://w3s.link/ipfs/',
+    'https://ipfs.io/ipfs/',
+    'https://cloudflare-ipfs.com/ipfs/',
+  ];
+
+  async function fetchManifest(uri) {
+    if (uri.startsWith('ipfs://')) {
+      const cid = uri.replace('ipfs://', '');
+      let lastErr;
+      for (const gw of IPFS_GATEWAYS) {
+        try {
+          const res = await fetch(`${gw}${cid}/manifest.json`, { cache: 'no-store' });
+          if (res.ok) return { manifest: await res.json(), cid: uri };
+          lastErr = `${res.status}`;
+        } catch (e) { lastErr = e.message; }
+      }
+      throw new Error(`all IPFS gateways failed (${lastErr})`);
+    }
+    if (uri.startsWith('https://')) {
+      const res = await fetch(uri, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return { manifest: await res.json(), cid: uri };
+    }
+    throw new Error(`unsupported scheme: ${uri.slice(0, 12)}…`);
+  }
+
+  async function resolveSkill(name, chain) {
+    const t0 = performance.now();
+    const client = clients[chain];
+    const normalized = normalize(name);
+    const uri = await client.getEnsText({ name: normalized, key: SKILL_KEY });
+    if (!uri) throw new Error(`no ${SKILL_KEY} text record on ${name}`);
+    const { manifest, cid } = await fetchManifest(uri);
+    return { manifest, cid, ms: Math.round(performance.now() - t0) };
+  }
+
+  let liveResolveActive = false;
+
+  function renderResolved({ manifest, cid, ms }) {
+    liveResolveActive = true;
+    $('#resolveMs').textContent = `${ms} MS`;
+    $('#cidLine').className = 'cid ok';
+    $('#cidLine').textContent = `${cid} · validated`;
+    $('#toolsCount').textContent = String(manifest.tools.length).padStart(3, '0');
+    const list = $('#toolsList');
+    list.innerHTML = '';
+    for (const tool of manifest.tools) {
+      const row = document.createElement('div');
+      row.className = 't';
+      row.innerHTML = `<span class="t-name">${manifest.name}__${tool.name}</span>` +
+                      `<span class="t-exec">${tool.execution.type}</span>`;
+      list.appendChild(row);
+    }
+  }
+
+  function renderError(msg) {
+    liveResolveActive = true;
+    $('#cidLine').className = 'cid err';
+    $('#cidLine').textContent = `error · ${msg}`;
+    $('#toolsList').innerHTML = '';
+    $('#toolsCount').textContent = '000';
+  }
+
+  async function runResolve() {
+    const btn = $('#resolveBtn');
+    const input = $('#ensInput');
+    const name = input.value.trim();
+    if (!name) return;
+    const chain = $('#chainToggle').textContent.trim().toLowerCase();
+    btn.disabled = true;
+    $('#cidLine').className = 'cid';
+    $('#cidLine').textContent = `resolving on ${chain}…`;
+    try {
+      const r = await resolveSkill(name, chain);
+      renderResolved(r);
+    } catch (e) {
+      renderError(e.message ?? String(e));
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $('#resolveBtn').addEventListener('click', runResolve);
+  $('#ensInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runResolve();
+  });
+  $('#chainToggle').addEventListener('click', () => {
+    const t = $('#chainToggle');
+    t.textContent = t.textContent === 'SEPOLIA' ? 'MAINNET' : 'SEPOLIA';
+  });
+
+  // auto-resolve once on load so the live page is never empty
+  runResolve();
 
   const glyphGrid = $('#glyphGrid');
   const ROWS = 7, COLS = 11;
@@ -1191,8 +1368,10 @@
   }, 28000);
 
   function drift() {
-    const ms = 140 + Math.floor(Math.random() * 90);
-    $('#resolveMs').textContent = `${ms} MS`;
+    if (!liveResolveActive) {
+      const ms = 140 + Math.floor(Math.random() * 90);
+      $('#resolveMs').textContent = `${ms} MS`;
+    }
     $('#bpm').textContent = `BPM ${60 + Math.floor(Math.random() * 24)}`;
   }
   setInterval(drift, 2400);
@@ -1204,12 +1383,13 @@
     const dur = 700;
     const el = $('#toolsCount');
     function step(now) {
+      if (liveResolveActive) return;
       const t = Math.min(1, (now - start) / dur);
       const eased = 1 - Math.pow(1 - t, 3);
       v = Math.floor(eased * target);
       el.textContent = String(v).padStart(3, '0');
       if (t < 1) requestAnimationFrame(step);
-      else el.textContent = '004';
+      else if (!liveResolveActive) el.textContent = '004';
     }
     requestAnimationFrame(step);
   })();

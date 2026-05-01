@@ -575,12 +575,76 @@
 
       <aside class="card day-rail" id="dayRail">
         <div class="label">DAYS</div>
-        <a class="day-btn active" href="#day-7"><span class="num">d7</span><span class="date">apr 30</span></a>
+        <a class="day-btn active" href="#day-8"><span class="num">d8</span><span class="date">may 01</span></a>
+        <a class="day-btn" href="#day-7"><span class="num">d7</span><span class="date">apr 30</span></a>
         <a class="day-btn" href="#day-6"><span class="num">d6</span><span class="date">apr 29</span></a>
         <a class="day-btn" href="#day-5"><span class="num">d5</span><span class="date">apr 28</span></a>
       </aside>
 
       <main>
+
+        <!-- ── DAY 8 ── -->
+        <section class="day-section" id="day-8">
+          <div class="day-header">
+            <div class="day-num">D8</div>
+            <div class="day-name">skill explorer · ENSIP draft · review queue</div>
+            <div class="label">2026·05·01 · THU · TODAY</div>
+          </div>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #43</div>
+            <div class="entry-time">09:00 · OPEN</div>
+            <div class="entry-title">Skill Explorer is live — homepage hero now resolves real ENS names</div>
+            <ul>
+              <li><code>apps/web/index.html</code> hero card replaces the static "currently resolving" copy with a real input + RESOLVE button</li>
+              <li>Loads <code>viem</code> via <code>esm.sh</code>, normalizes the ENS name, reads <code>xyz.manifest.skill</code> text record, fetches manifest from IPFS gateway with fallback, parses tools list</li>
+              <li>Updates resolve time, CID, tools count, and renders <code>&lt;bundle&gt;__&lt;tool&gt;</code> with execution badges in real time</li>
+              <li>Sepolia ↔ Mainnet toggle inline; auto-resolves <code>quote.skilltest.eth</code> on first paint</li>
+              <li>Closes #14 (#5 Skill Explorer)</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">resolver hero input</div>
+              <div class="proof">resolved bundle render</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/43" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #42</div>
+            <div class="entry-time">08:55 · OPEN</div>
+            <div class="entry-title">ENSIP draft for <code>xyz.manifest.skill.*</code> namespace</div>
+            <ul>
+              <li>119-line draft at <code>docs/ENSIP-DRAFT.md</code> covers required + optional text-record keys, bundle layout, execution dispatch, resolution pseudocode, ENSIP-25 + ERC-8004 trust binding</li>
+              <li>Captures rationale (why text records, why one-name-per-skill, why separate <code>imports</code> record) and 3 open questions for the forum thread</li>
+              <li>Unlocks demo line: <em>"we submitted a draft ENSIP for the AI skill namespace"</em> — Most Creative on the ENS track</li>
+              <li>Closes #20 (#11 ENSIP draft submission)</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">ENSIP-DRAFT.md</div>
+              <div class="proof">forum thread (TBD)</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/42" target="_blank">view PR </a>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">PR #41</div>
+            <div class="entry-time">08:55 · REVIEWED</div>
+            <div class="entry-title">PR #41 from Huc06 — review with required changes</div>
+            <ul>
+              <li>Approved <code>docs/0G_STORAGE_NODE.md</code> — clean prize-track guide (build node, get tokens, upload, set ENS)</li>
+              <li>Blocked <code>scripts/setup-0g-storage-node.ts</code>: hardcoded <code>/Users/huc/...</code> path, <code>.wait()</code> doesn't exist on <code>spawn()</code>, stdin listener leaks, no exit-code handling</li>
+              <li>Posted a 50-line drop-in rewrite using <code>spawnSync</code> + <code>OG_VENDOR_DIR</code> env</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">review comment</div>
+              <div class="proof">drop-in rewrite</div>
+            </div>
+            <a class="entry-link" href="https://github.com/hien-p/Skillname/pull/41" target="_blank">view PR </a>
+          </article>
+        </section>
 
         <!-- ── DAY 7 ── -->
         <section class="day-section" id="day-7">
