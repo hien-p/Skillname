@@ -177,6 +177,9 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         });
       }
 
+      // Notify client that tool list has changed so it re-fetches tools/list
+      await server.sendToolListChanged();
+
       const rootResult = root.result;
       const verified = rootResult.ensip25?.bound ? "✓ verified" : "unverified";
       const depCount = flat.length - 1;
