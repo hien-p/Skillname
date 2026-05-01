@@ -39,9 +39,11 @@ import {
 import {
   createPublicClient,
   createWalletClient,
+  getAbiItem,
   http,
   isAddress,
   type Abi,
+  type AbiFunction,
   type Chain,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -618,6 +620,42 @@ async function resolveContractAddress(
   return resolved;
 }
 
+function mapArgsViaAbi(
+  abi: Abi,
+  method: string,
+  args: Record<string, unknown>,
+  tool: Tool,
+): unknown[] {
+  let abiItem: ReturnType<typeof getAbiItem> | undefined;
+  try {
+    abiItem = getAbiItem({ abi, name: method });
+  } catch {
+    abiItem = undefined;
+  }
+
+  if (abiItem && abiItem.type === "function") {
+    const fn = abiItem as AbiFunction;
+    return fn.inputs.map((input, i) => {
+      const key = input.name && input.name.length > 0 ? input.name : String(i);
+      if (!(key in args)) {
+        throw new Error(
+          `missing argument "${key}" for ${method} (declared in ABI as inputs[${i}])`,
+        );
+      }
+      return args[key];
+    });
+  }
+
+  // Fallback for ABIs that don't surface the method as a function entry.
+  const schemaProps =
+    tool.inputSchema && typeof tool.inputSchema === "object"
+      ? ((tool.inputSchema as { properties?: Record<string, unknown> })
+          .properties ?? null)
+      : null;
+  const order = schemaProps ? Object.keys(schemaProps) : Object.keys(args);
+  return order.map((k) => args[k]);
+}
+
 async function executeContract(
   tool: Tool,
   args: Record<string, unknown>,
@@ -636,16 +674,12 @@ async function executeContract(
     const client = getPublicClient(exec.chainId);
     const address = await resolveContractAddress(client, exec.address);
 
-    // Map the JSON-RPC-style named-args object onto positional args using the
-    // tool's inputSchema property order. Falls back to insertion order if no
-    // schema is declared.
-    const schemaProps =
-      tool.inputSchema && typeof tool.inputSchema === "object"
-        ? ((tool.inputSchema as { properties?: Record<string, unknown> })
-            .properties ?? null)
-        : null;
-    const order = schemaProps ? Object.keys(schemaProps) : Object.keys(args);
-    const callArgs = order.map((k) => args[k]);
+    // Map the named-args object onto positional args using the ABI as the
+    // canonical source of order: read the matching AbiFunction's `inputs[].name`,
+    // and look up each name in `args`. Falls back to inputSchema property order
+    // for ABIs that lack the function entry (rare; e.g. proxy patterns where the
+    // method dispatches through a fallback). Fails loud on missing args.
+    const callArgs = mapArgsViaAbi(exec.abi as Abi, exec.method, args, tool);
 
     if (mode === "read") {
       const t0 = Date.now();
