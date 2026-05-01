@@ -12,3 +12,6 @@ coverage/
 
 # setup-day1.sh expands into a sibling directory with its own .git
 skillname/
+
+# 0g-storage-client binary (cloned by scripts/setup-0g-storage-node.ts)
+.vendor/
