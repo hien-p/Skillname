@@ -22,25 +22,30 @@
  *   → Claude can immediately call it
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   type Tool as MCPTool,
-} from '@modelcontextprotocol/sdk/types.js'
-import 'dotenv/config'
-import { resolveSkill, type ResolveResult, type Tool } from '@skillname/sdk'
-import { executeVia0GCompute, listProviders } from './0gcompute.js'
-import { executeViaKeeperHub } from './keeperhub.js'
+} from "@modelcontextprotocol/sdk/types.js";
+import "dotenv/config";
+import {
+  resolveSkill,
+  walkImports,
+  type ResolveResult,
+  type Tool,
+} from "@skillname/sdk";
+import { executeVia0GCompute, listProviders } from "./0gcompute.js";
+import { executeViaKeeperHub } from "./keeperhub.js";
 
 // -------------------------------------------------------------------------
 // KeeperHub / x402 config — picked up at startup (Issue #13)
 // -------------------------------------------------------------------------
 
-const KEEPERHUB_API_KEY = process.env.KEEPERHUB_API_KEY ?? ''
-const AGENT_WALLET_PRIVATE_KEY = process.env.AGENT_WALLET_PRIVATE_KEY ?? ''
-const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS ?? ''
+const KEEPERHUB_API_KEY = process.env.KEEPERHUB_API_KEY ?? "";
+const AGENT_WALLET_PRIVATE_KEY = process.env.AGENT_WALLET_PRIVATE_KEY ?? "";
+const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS ?? "";
 
 // -------------------------------------------------------------------------
 // Structured stderr logging.
@@ -49,221 +54,384 @@ const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS ?? ''
 // -------------------------------------------------------------------------
 
 const log = {
-  in:   (msg: string) => process.stderr.write(`→ ${msg}\n`),
-  out:  (msg: string) => process.stderr.write(`← ${msg}\n`),
-  ok:   (msg: string) => process.stderr.write(`✓ ${msg}\n`),
-  err:  (msg: string) => process.stderr.write(`✗ ${msg}\n`),
+  in: (msg: string) => process.stderr.write(`→ ${msg}\n`),
+  out: (msg: string) => process.stderr.write(`← ${msg}\n`),
+  ok: (msg: string) => process.stderr.write(`✓ ${msg}\n`),
+  err: (msg: string) => process.stderr.write(`✗ ${msg}\n`),
   info: (msg: string) => process.stderr.write(`· ${msg}\n`),
-}
+};
 
 // -------------------------------------------------------------------------
 // State
 // -------------------------------------------------------------------------
 
 interface ImportedSkill {
-  ensName: string
-  result: ResolveResult
-  importedAt: number
+  ensName: string;
+  result: ResolveResult;
+  importedAt: number;
 }
 
-const imported: Map<string, ImportedSkill> = new Map()
+const imported: Map<string, ImportedSkill> = new Map();
 
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 min
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
 
 // -------------------------------------------------------------------------
 // MCP server
 // -------------------------------------------------------------------------
 
 const server = new Server(
-  { name: 'skillname', version: '0.0.1' },
-  { capabilities: { tools: {} } }
-)
+  { name: "skillname", version: "0.0.1" },
+  { capabilities: { tools: {} } },
+);
 
 // Built-in: skill_import — replaces the old manifest_load
 const SKILL_IMPORT_TOOL: MCPTool = {
-  name: 'skill_import',
+  name: "skill_import",
   description:
     'Import a skill by ENS name. Resolves the name via ENS text records, fetches the bundle from IPFS, and registers its function(s) as MCP tools. Use this whenever the user mentions an ENS name like "import quote.uniswap.eth", "use swap.uniswap.eth", or "load skills from foo.eth".',
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
       ensName: {
-        type: 'string',
-        description: 'ENS name to import, e.g. "quote.uniswap.eth" or "score.gitcoin.eth"',
+        type: "string",
+        description:
+          'ENS name to import, e.g. "quote.uniswap.eth" or "score.gitcoin.eth"',
       },
       chain: {
-        type: 'string',
-        enum: ['mainnet', 'sepolia'],
-        default: 'sepolia',
-        description: 'Chain to resolve ENS on (default: sepolia for hackathon)',
+        type: "string",
+        enum: ["mainnet", "sepolia"],
+        default: "sepolia",
+        description: "Chain to resolve ENS on (default: sepolia for hackathon)",
       },
     },
-    required: ['ensName'],
+    required: ["ensName"],
   },
-}
+};
 
 const SKILL_LIST_TOOL: MCPTool = {
-  name: 'skill_list_imported',
+  name: "skill_list_imported",
   description:
-    'List every skill currently imported and the function(s) it registered. Useful for confirming what is available before calling a tool.',
-  inputSchema: { type: 'object', properties: {} },
-}
+    "List every skill currently imported and the function(s) it registered. Useful for confirming what is available before calling a tool.",
+  inputSchema: { type: "object", properties: {} },
+};
 
 const ZG_LIST_PROVIDERS_TOOL: MCPTool = {
-  name: 'zg_list_providers',
+  name: "zg_list_providers",
   description:
-    'List available AI inference providers on 0G Compute Network. Returns provider addresses, models (e.g. qwen3.6-plus, GLM-5-FP8), and endpoints. Use to discover providers before importing a 0g-compute skill.',
-  inputSchema: { type: 'object', properties: {} },
-}
+    "List available AI inference providers on 0G Compute Network. Returns provider addresses, models (e.g. qwen3.6-plus, GLM-5-FP8), and endpoints. Use to discover providers before importing a 0g-compute skill.",
+  inputSchema: { type: "object", properties: {} },
+};
+
+const SKILL_CALL_TOOL: MCPTool = {
+  name: "skill_call",
+  description:
+    'Call an imported skill tool by name. After importing a skill with skill_import, use this tool to execute any of its registered functions. For example, after importing quote.skilltest.eth, call skill_call with toolName "quote-uniswap__get_quote" and the appropriate arguments. ALWAYS use this tool to call imported skill functions — do not use tool_search.',
+  inputSchema: {
+    type: "object",
+    properties: {
+      toolName: {
+        type: "string",
+        description:
+          'The full name of the imported tool to call, e.g. "quote-uniswap__get_quote" or "weather-tomorrow__forecast"',
+      },
+      arguments: {
+        type: "object",
+        description: "Arguments to pass to the tool, matching its inputSchema",
+        additionalProperties: true,
+      },
+    },
+    required: ["toolName", "arguments"],
+  },
+};
 
 // -------------------------------------------------------------------------
 // Tool listing — built-ins + dynamically imported skills
 // -------------------------------------------------------------------------
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  const dynamicTools: MCPTool[] = []
+  const dynamicTools: MCPTool[] = [];
 
   for (const [, s] of imported) {
     for (const t of s.result.bundle.tools) {
       dynamicTools.push({
         name: `${s.result.bundle.name}__${t.name}`,
-        description: `[${s.ensName}] ${t.description}`,
-        inputSchema: t.inputSchema as MCPTool['inputSchema'],
-      })
+        description: `[skill: ${s.ensName}] ${t.description} — Call this tool directly by name.`,
+        inputSchema: t.inputSchema as MCPTool["inputSchema"],
+      });
     }
   }
 
   return {
-    tools: [SKILL_IMPORT_TOOL, SKILL_LIST_TOOL, ZG_LIST_PROVIDERS_TOOL, ...dynamicTools],
-  }
-})
+    tools: [
+      SKILL_IMPORT_TOOL,
+      SKILL_LIST_TOOL,
+      SKILL_CALL_TOOL,
+      ZG_LIST_PROVIDERS_TOOL,
+      ...dynamicTools,
+    ],
+  };
+});
 
 // -------------------------------------------------------------------------
 // Tool dispatch
 // -------------------------------------------------------------------------
 
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const name = req.params.name
-  const args = req.params.arguments ?? {}
+  const name = req.params.name;
+  const args = req.params.arguments ?? {};
 
   // -- Built-in: import a skill --
-  if (name === 'skill_import') {
-    const ensName = args.ensName as string
-    const chain = (args.chain as 'mainnet' | 'sepolia') ?? 'sepolia'
-    const t0 = Date.now()
-    log.in(`skill_import ${ensName} (${chain})`)
+  if (name === "skill_import") {
+    const ensName = args.ensName as string;
+    const chain = (args.chain as "mainnet" | "sepolia") ?? "sepolia";
+    const t0 = Date.now();
+    log.in(`skill_import ${ensName} (${chain})`);
 
     try {
-      const result = await resolveSkill(ensName, { chain })
-      imported.set(ensName, { ensName, result, importedAt: Date.now() })
+      // Walk the full dependency graph (breadth-first, max depth 5)
+      const { root, flat } = await walkImports(ensName, { chain });
 
-      const verified = result.ensip25?.bound ? '✓ verified' : 'unverified'
-      const toolsList = result.bundle.tools
-        .map((t) => `  · ${result.bundle.name}__${t.name}: ${t.description}`)
-        .join('\n')
+      // Register all resolved skills (root + transitive deps)
+      for (const result of flat) {
+        imported.set(result.ensName, {
+          ensName: result.ensName,
+          result,
+          importedAt: Date.now(),
+        });
+      }
 
-      const dt = Date.now() - t0
-      log.ok(`imported ${ensName} (${verified}) in ${dt}ms`)
-      log.info(`registered ${result.bundle.tools.length} tool(s) from ${result.cid.slice(0, 16)}…`)
+      // Notify client that tool list has changed so it re-fetches tools/list
+      await server.sendToolListChanged();
+
+      const rootResult = root.result;
+      const verified = rootResult.ensip25?.bound ? "✓ verified" : "unverified";
+      const depCount = flat.length - 1;
+
+      // Build tools list across all resolved skills
+      const toolLines: string[] = [];
+      for (const result of flat) {
+        for (const t of result.bundle.tools) {
+          toolLines.push(
+            `  · ${result.bundle.name}__${t.name}: ${t.description}`,
+          );
+        }
+      }
+
+      const dt = Date.now() - t0;
+      const totalTools = flat.reduce(
+        (sum, r) => sum + r.bundle.tools.length,
+        0,
+      );
+      log.ok(`imported ${ensName} (${verified}) in ${dt}ms`);
+      log.info(`registered ${totalTools} tool(s) from ${flat.length} skill(s)`);
+      if (depCount > 0) {
+        log.info(
+          `dependencies: ${flat
+            .slice(1)
+            .map((r) => r.ensName)
+            .join(", ")}`,
+        );
+      }
+
+      const depLine =
+        depCount > 0
+          ? `\nDependencies (${depCount}): ${flat
+              .slice(1)
+              .map((r) => r.ensName)
+              .join(", ")}\n`
+          : "";
 
       return {
         content: [
           {
-            type: 'text',
+            type: "text",
             text:
-              `Imported ${result.bundle.tools.length} tool(s) from ${ensName} (${verified})\n` +
-              `Version: ${result.version ?? 'unspecified'}\n` +
-              `CID: ${result.cid}\n\n` +
-              `Tools:\n${toolsList}`,
+              `Imported ${totalTools} tool(s) from ${ensName} (${verified})\n` +
+              `Version: ${rootResult.version ?? "unspecified"}\n` +
+              `CID: ${rootResult.cid}\n` +
+              depLine +
+              `\nTools now available (call these directly by name):\n${toolLines.join("\n")}\n\n` +
+              `IMPORTANT: These tools are now registered and ready to call. ` +
+              `Use them directly by their full name (e.g. ${flat[0].bundle.name}__${flat[0].bundle.tools[0].name}). ` +
+              `Do NOT use tool_search — call the tool directly.`,
           },
         ],
-      }
+      };
     } catch (e: any) {
-      log.err(`import ${ensName} failed: ${e.message}`)
+      log.err(`import ${ensName} failed: ${e.message}`);
       return {
-        content: [{ type: 'text', text: `Failed to import ${ensName}: ${e.message}` }],
+        content: [
+          { type: "text", text: `Failed to import ${ensName}: ${e.message}` },
+        ],
         isError: true,
-      }
+      };
     }
   }
 
   // -- Built-in: list imported --
-  if (name === 'skill_list_imported') {
-    log.in('skill_list_imported')
-    const lines: string[] = []
+  if (name === "skill_list_imported") {
+    log.in("skill_list_imported");
+    const lines: string[] = [];
     for (const [ens, s] of imported) {
-      const age = Math.floor((Date.now() - s.importedAt) / 1000)
-      lines.push(`${ens} (v${s.result.version ?? '?'}, ${age}s ago):`)
+      const age = Math.floor((Date.now() - s.importedAt) / 1000);
+      lines.push(`${ens} (v${s.result.version ?? "?"}, ${age}s ago):`);
       for (const t of s.result.bundle.tools) {
-        lines.push(`  · ${s.result.bundle.name}__${t.name}`)
+        lines.push(`  · ${s.result.bundle.name}__${t.name}`);
       }
     }
     return {
       content: [
-        { type: 'text', text: lines.length ? lines.join('\n') : 'No skills imported yet. Use skill_import to bring one in.' },
+        {
+          type: "text",
+          text: lines.length
+            ? lines.join("\n")
+            : "No skills imported yet. Use skill_import to bring one in.",
+        },
       ],
+    };
+  }
+
+  // -- Built-in: call an imported skill tool --
+  if (name === "skill_call") {
+    const toolName = args.toolName as string;
+    const toolArgs = (args.arguments as Record<string, unknown>) ?? {};
+    log.in(`skill_call ${toolName}`);
+
+    // Find the tool across all imported skills
+    const sep = toolName.indexOf("__");
+    if (sep === -1) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Invalid tool name "${toolName}". Expected format: <bundle>__<tool> (e.g. quote-uniswap__get_quote)`,
+          },
+        ],
+        isError: true,
+      };
     }
+
+    const bundleName = toolName.slice(0, sep);
+    const fnName = toolName.slice(sep + 2);
+
+    let skill: ImportedSkill | undefined;
+    for (const s of imported.values()) {
+      if (s.result.bundle.name === bundleName) {
+        skill = s;
+        break;
+      }
+    }
+    if (!skill) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Skill "${bundleName}" not imported. Use skill_import first.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const tool = skill.result.bundle.tools.find((t) => t.name === fnName);
+    if (!tool) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Tool "${fnName}" not found in skill "${bundleName}". Available: ${skill.result.bundle.tools.map((t) => t.name).join(", ")}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    return await executeRouted(tool, toolArgs, skill);
   }
 
   // -- Built-in: list 0G Compute providers --
-  if (name === 'zg_list_providers') {
-    log.in('zg_list_providers')
+  if (name === "zg_list_providers") {
+    log.in("zg_list_providers");
     try {
-      const providers = await listProviders()
+      const providers = await listProviders();
       if (providers.length === 0) {
-        return { content: [{ type: 'text', text: 'No 0G Compute providers found on testnet.' }] }
+        return {
+          content: [
+            { type: "text", text: "No 0G Compute providers found on testnet." },
+          ],
+        };
       }
-      const lines = providers.map((p) => `${p.address}  model: ${p.model || '(unknown)'}  url: ${p.url || '(unknown)'}`)
-      log.ok(`found ${providers.length} 0G Compute provider(s)`)
-      return { content: [{ type: 'text', text: `0G Compute providers (${providers.length}):\n${lines.join('\n')}` }] }
+      const lines = providers.map(
+        (p) =>
+          `${p.address}  model: ${p.model || "(unknown)"}  url: ${p.url || "(unknown)"}`,
+      );
+      log.ok(`found ${providers.length} 0G Compute provider(s)`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `0G Compute providers (${providers.length}):\n${lines.join("\n")}`,
+          },
+        ],
+      };
     } catch (e: any) {
-      log.err(`zg_list_providers failed: ${e.message}`)
-      return { content: [{ type: 'text', text: `Failed to list providers: ${e.message}` }], isError: true }
+      log.err(`zg_list_providers failed: ${e.message}`);
+      return {
+        content: [
+          { type: "text", text: `Failed to list providers: ${e.message}` },
+        ],
+        isError: true,
+      };
     }
   }
 
   // -- Dynamic: dispatch by namespace --
-  const sep = name.indexOf('__')
+  const sep = name.indexOf("__");
   if (sep === -1) {
-    log.err(`unknown tool: ${name}`)
+    log.err(`unknown tool: ${name}`);
     return {
-      content: [{ type: 'text', text: `Unknown tool: ${name}` }],
+      content: [{ type: "text", text: `Unknown tool: ${name}` }],
       isError: true,
-    }
+    };
   }
 
-  const bundleName = name.slice(0, sep)
-  const toolName = name.slice(sep + 2)
-  log.in(`${name} (looking up ${bundleName}/${toolName})`)
+  const bundleName = name.slice(0, sep);
+  const toolName = name.slice(sep + 2);
+  log.in(`${name} (looking up ${bundleName}/${toolName})`);
 
-  let skill: ImportedSkill | undefined
+  let skill: ImportedSkill | undefined;
   for (const s of imported.values()) {
     if (s.result.bundle.name === bundleName) {
-      skill = s
-      break
+      skill = s;
+      break;
     }
   }
   if (!skill) {
-    log.err(`bundle "${bundleName}" not imported`)
+    log.err(`bundle "${bundleName}" not imported`);
     return {
       content: [
-        { type: 'text', text: `Skill "${bundleName}" not imported. Use skill_import first.` },
+        {
+          type: "text",
+          text: `Skill "${bundleName}" not imported. Use skill_import first.`,
+        },
       ],
       isError: true,
-    }
+    };
   }
 
-  const tool = skill.result.bundle.tools.find((t) => t.name === toolName)
+  const tool = skill.result.bundle.tools.find((t) => t.name === toolName);
   if (!tool) {
-    log.err(`tool ${toolName} not in ${bundleName}`)
+    log.err(`tool ${toolName} not in ${bundleName}`);
     return {
-      content: [{ type: 'text', text: `Tool ${toolName} not in skill ${bundleName}` }],
+      content: [
+        { type: "text", text: `Tool ${toolName} not in skill ${bundleName}` },
+      ],
       isError: true,
-    }
+    };
   }
 
-  return await executeRouted(tool, args, skill)
-})
+  return await executeRouted(tool, args, skill);
+});
 
 // -------------------------------------------------------------------------
 // Execution router
@@ -272,104 +440,131 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 async function executeRouted(
   tool: Tool,
   args: Record<string, unknown>,
-  skill: ImportedSkill
+  skill: ImportedSkill,
 ) {
-  log.info(`exec.type = ${tool.execution.type}`)
+  log.info(`exec.type = ${tool.execution.type}`);
   switch (tool.execution.type) {
-    case 'local':
-      return executeLocal(tool, args, skill)
-    case 'keeperhub':
-      return executeKeeperHub(tool, args, skill)
-    case 'http':
-      return executeHttp(tool, args, skill)
-    case '0g-compute':
-      return execute0GCompute(tool, args)
+    case "local":
+      return executeLocal(tool, args, skill);
+    case "keeperhub":
+      return executeKeeperHub(tool, args, skill);
+    case "http":
+      return executeHttp(tool, args, skill);
+    case "0g-compute":
+      return execute0GCompute(tool, args);
     default:
-      log.err(`unsupported execution: ${(tool.execution as any).type}`)
+      log.err(`unsupported execution: ${(tool.execution as any).type}`);
       return {
         content: [
-          { type: 'text', text: `Unsupported execution type: ${(tool.execution as any).type}` },
+          {
+            type: "text",
+            text: `Unsupported execution type: ${(tool.execution as any).type}`,
+          },
         ],
         isError: true,
-      }
+      };
   }
 }
 
-async function executeLocal(tool: Tool, args: Record<string, unknown>, _skill: ImportedSkill) {
+async function executeLocal(
+  tool: Tool,
+  args: Record<string, unknown>,
+  _skill: ImportedSkill,
+) {
   // Hackathon stub: real impl loads handler from bundle and executes.
   return {
     content: [
       {
-        type: 'text',
+        type: "text",
         text: `[stub] Local execution for ${tool.name} with args: ${JSON.stringify(args)}`,
       },
     ],
-  }
+  };
 }
 
-async function executeKeeperHub(tool: Tool, args: Record<string, unknown>, _skill: ImportedSkill) {
+async function executeKeeperHub(
+  tool: Tool,
+  args: Record<string, unknown>,
+  _skill: ImportedSkill,
+) {
   if (!KEEPERHUB_API_KEY) {
-    log.err(`KEEPERHUB_API_KEY not set`)
+    log.err(`KEEPERHUB_API_KEY not set`);
     return {
-      content: [{ type: 'text', text: `KeeperHub not configured. Set KEEPERHUB_API_KEY and restart the bridge.` }],
+      content: [
+        {
+          type: "text",
+          text: `KeeperHub not configured. Set KEEPERHUB_API_KEY and restart the bridge.`,
+        },
+      ],
       isError: true,
-    }
+    };
   }
 
-  log.info(`keeperhub → ${tool.name}`)
+  log.info(`keeperhub → ${tool.name}`);
   try {
-    const result = await executeViaKeeperHub(tool, args)
-    log.ok(`keeperhub done: ${result.text.split('\n')[1] ?? ''}`)
+    const result = await executeViaKeeperHub(tool, args);
+    log.ok(`keeperhub done: ${result.text.split("\n")[1] ?? ""}`);
     return {
-      content: [{ type: 'text', text: result.text }],
+      content: [{ type: "text", text: result.text }],
       isError: result.isError,
-    }
+    };
   } catch (e: any) {
-    log.err(`keeperhub error: ${e.message}`)
+    log.err(`keeperhub error: ${e.message}`);
     return {
-      content: [{ type: 'text', text: `KeeperHub execution failed: ${e.message}` }],
+      content: [
+        { type: "text", text: `KeeperHub execution failed: ${e.message}` },
+      ],
       isError: true,
-    }
+    };
   }
 }
 
-async function executeHttp(tool: Tool, args: Record<string, unknown>, _skill: ImportedSkill) {
-  const exec = tool.execution as Extract<Tool['execution'], { type: 'http' }>
-  const t0 = Date.now()
-  log.out(`${exec.method ?? 'POST'} ${exec.endpoint}`)
+async function executeHttp(
+  tool: Tool,
+  args: Record<string, unknown>,
+  _skill: ImportedSkill,
+) {
+  const exec = tool.execution as Extract<Tool["execution"], { type: "http" }>;
+  const t0 = Date.now();
+  log.out(`${exec.method ?? "POST"} ${exec.endpoint}`);
 
   // For GET, send args as query string; for everything else, JSON body.
-  let url = exec.endpoint
-  let init: RequestInit = { method: exec.method ?? 'POST' }
-  if ((exec.method ?? 'POST') === 'GET') {
-    const qs = new URLSearchParams()
+  let url = exec.endpoint;
+  let init: RequestInit = { method: exec.method ?? "POST" };
+  if ((exec.method ?? "POST") === "GET") {
+    const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(args)) {
-      if (v !== undefined && v !== null) qs.set(k, String(v))
+      if (v !== undefined && v !== null) qs.set(k, String(v));
     }
-    url += (url.includes('?') ? '&' : '?') + qs.toString()
+    url += (url.includes("?") ? "&" : "?") + qs.toString();
   } else {
-    init.headers = { 'Content-Type': 'application/json' }
-    init.body = JSON.stringify(args)
+    init.headers = { "Content-Type": "application/json" };
+    init.body = JSON.stringify(args);
   }
 
-  const res = await fetch(url, init)
-  const text = await res.text()
-  log.ok(`${res.status} in ${Date.now() - t0}ms`)
+  const res = await fetch(url, init);
+  const text = await res.text();
+  log.ok(`${res.status} in ${Date.now() - t0}ms`);
   return {
-    content: [{ type: 'text', text }],
+    content: [{ type: "text", text }],
     isError: !res.ok,
-  }
+  };
 }
 
 async function execute0GCompute(tool: Tool, args: Record<string, unknown>) {
-  const exec = tool.execution as Extract<Tool['execution'], { type: '0g-compute' }>
-  log.info(`0G Compute → provider ${exec.providerAddress} model ${exec.model ?? 'qwen3.6-plus'}`)
-  const result = await executeVia0GCompute(tool, args)
-  log.ok(`0G Compute done (provider ${result.provider})`)
+  const exec = tool.execution as Extract<
+    Tool["execution"],
+    { type: "0g-compute" }
+  >;
+  log.info(
+    `0G Compute → provider ${exec.providerAddress} model ${exec.model ?? "qwen3.6-plus"}`,
+  );
+  const result = await executeVia0GCompute(tool, args);
+  log.ok(`0G Compute done (provider ${result.provider})`);
   return {
-    content: [{ type: 'text', text: result.text }],
+    content: [{ type: "text", text: result.text }],
     isError: result.isError,
-  }
+  };
 }
 
 // -------------------------------------------------------------------------
@@ -377,12 +572,12 @@ async function execute0GCompute(tool: Tool, args: Record<string, unknown>) {
 // -------------------------------------------------------------------------
 
 async function main() {
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
-  log.ok('skillname bridge ready · stdio · MCP')
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  log.ok("skillname bridge ready · stdio · MCP");
 }
 
 main().catch((e) => {
-  log.err(`fatal: ${e.message ?? e}`)
-  process.exit(1)
-})
+  log.err(`fatal: ${e.message ?? e}`);
+  process.exit(1);
+});
