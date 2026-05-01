@@ -38,9 +38,10 @@ const AGENT_KEY = process.env.AGENT_WALLET_PRIVATE_KEY as `0x${string}` | undefi
 const PAY_TO = process.env.PAY_TO_ADDRESS as `0x${string}` | undefined
 const KH_KEY = process.env.KEEPERHUB_API_KEY
 
-// Base Sepolia: a known view-only contract call works without USDC depletion.
-// We use a USDC `name()` view as the target — read-only, free at the protocol
-// level, but the gateway still 402s us first because /execute is paywalled.
+// Target: a USDC `name()` view call. The contract call is view-only (no
+// state change, no gas paid by the facilitator), but the test still costs
+// 0.05 USDC per run — that's the gateway price set in keeperhub-paid's
+// /execute route, charged regardless of what KeeperHub does downstream.
 const TARGET_CONTRACT = '0x036CbD53842c5426634e7929541eC2318f3dCF7e' // USDC on Base Sepolia
 const TARGET_FN = 'name'
 const NETWORK = '84532'
