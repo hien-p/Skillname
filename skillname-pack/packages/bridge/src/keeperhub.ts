@@ -109,7 +109,11 @@ export async function executeViaKeeperHub(
     // Simple token transfer — different args shape
     const transferArgs: Record<string, string> = {
       network: String(chainId),
-      to: (args.to as string) ?? "",
+      to:
+        (args.to as string) ??
+        (args.recipient_address as string) ??
+        (args.recipient as string) ??
+        "",
       amount: (args.amount as string) ?? "",
       token: (args.token as string) ?? "USDC",
     };
@@ -189,7 +193,11 @@ async function executeViaPaidServer(
 
   const khTool = exec.tool ?? "execute_contract_call";
   if (khTool === "execute_transfer") {
-    body.to = (args.to as string) ?? "";
+    body.to =
+      (args.to as string) ??
+      (args.recipient_address as string) ??
+      (args.recipient as string) ??
+      "";
     body.amount = (args.amount as string) ?? "";
     body.token = (args.token as string) ?? "USDC";
   } else {
