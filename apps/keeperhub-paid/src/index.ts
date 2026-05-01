@@ -92,58 +92,125 @@ app.use("/execute", paymentMiddleware(routes, resourceServer));
 
 app.post("/execute", async (c) => {
   const body = await c.req.json<{
-    contract_address?: string;
     network: string;
-    function_name?: string;
-    function_args?: string;
-    abi?: string;
-    // execute_transfer fields
     to?: string;
     amount?: string;
     token?: string;
+    action?: string;
+    // Legacy fields
+    contract_address?: string;
+    function_name?: string;
+    function_args?: string;
   }>();
 
   try {
     const kh = await getKeeperHub();
 
-    // Route to execute_transfer if 'to' and 'amount' are present
-    const isTransfer = body.to && body.amount;
-    let khToolName: string;
-    let args: Record<string, string>;
+    // Step 1: Get wallet integration ID
+    const walletRes = khText(
+      await kh.callTool({ name: "get_wallet_integration", arguments: {} }),
+    );
+    const walletMatch = walletRes.match(
+      /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+    );
+    if (!walletMatch)
+      return c.json(
+        { error: `No wallet integration found: ${walletRes.slice(0, 200)}` },
+        500,
+      );
+    const walletId = walletMatch[0];
 
-    if (isTransfer) {
-      khToolName = "execute_transfer";
-      args = {
+    // Step 2: Build action config
+    const actionType = body.to ? "web3/transfer-funds" : "web3/write-contract";
+    let actionConfig: Record<string, unknown>;
+
+    if (body.to) {
+      actionConfig = {
+        actionType: "web3/transfer-funds",
         network: body.network,
-        to: body.to!,
-        amount: body.amount!,
-        token: body.token ?? "USDC",
+        toAddress: body.to,
+        amount: body.amount ?? "0",
+        walletId,
       };
     } else {
-      khToolName = "execute_contract_call";
-      args = {
-        contract_address: body.contract_address ?? "",
+      actionConfig = {
+        actionType: "web3/write-contract",
         network: body.network,
-        function_name: body.function_name ?? "",
+        contractAddress: body.contract_address ?? "",
+        functionName: body.function_name ?? "",
+        walletId,
       };
-      if (body.function_args) args.function_args = body.function_args;
-      if (body.abi) args.abi = body.abi;
     }
 
-    const res = await kh.callTool({
-      name: khToolName,
-      arguments: args,
-    });
-    const text = khText(res);
-
-    // Poll if execution ID returned
-    const idMatch = text.match(
-      /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
+    // Step 3: Create one-shot workflow
+    const createRes = khText(
+      await kh.callTool({
+        name: "create_workflow",
+        arguments: {
+          name: `skillname-paid-${Date.now()}`,
+          description: "Auto-created by keeperhub-paid x402 server",
+          nodes: [
+            {
+              id: "trigger-1",
+              type: "trigger",
+              data: {
+                label: "Manual",
+                type: "trigger",
+                config: { triggerType: "Manual" },
+                status: "idle",
+              },
+            },
+            {
+              id: "action-1",
+              type: "action",
+              data: {
+                label: actionType,
+                type: "action",
+                config: actionConfig,
+                status: "idle",
+              },
+            },
+          ],
+          edges: [{ id: "edge-1", source: "trigger-1", target: "action-1" }],
+        },
+      }),
     );
-    if (!idMatch) return c.json({ result: text });
 
-    const executionId = idMatch[1];
+    const wfMatch = createRes.match(
+      /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+    );
+    if (!wfMatch)
+      return c.json(
+        { error: `Failed to create workflow: ${createRes.slice(0, 200)}` },
+        500,
+      );
+    const workflowId = wfMatch[0];
+
+    // Step 4: Execute workflow
+    const execRes = khText(
+      await kh.callTool({
+        name: "execute_workflow",
+        arguments: { workflowId },
+      }),
+    );
+    const execMatch = execRes.match(
+      /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+    );
+    if (!execMatch)
+      return c.json(
+        { error: `Failed to execute workflow: ${execRes.slice(0, 200)}` },
+        500,
+      );
+    const executionId = execMatch[0];
+
+    // Step 5: Poll for completion
     const txHash = await pollExecution(kh, executionId);
+
+    // Cleanup (best effort)
+    kh.callTool({
+      name: "delete_workflow",
+      arguments: { workflowId, force: true },
+    }).catch(() => {});
 
     return c.json({
       txHash,
@@ -160,11 +227,11 @@ app.get("/health", (c) => c.json({ status: "ok", payTo: PAY_TO }));
 async function pollExecution(kh: Client, executionId: string): Promise<string> {
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    await sleep(2_000);
+    await sleep(3_000);
     const status = khText(
       await kh.callTool({
-        name: "get_direct_execution_status",
-        arguments: { execution_id: executionId },
+        name: "get_execution_status",
+        arguments: { executionId },
       }),
     );
     if (status.toLowerCase().includes("complet")) {

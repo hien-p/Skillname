@@ -1,14 +1,14 @@
 /**
- * KeeperHub MCP client.
+ * KeeperHub MCP client — workflow-based execution.
  *
- * Bridge acts as a MCP client to KeeperHub's hosted server at
- * https://app.keeperhub.com/mcp, calling execute_contract_call directly.
+ * KeeperHub uses a workflow model:
+ *   1. get_wallet_integration → walletId
+ *   2. create_workflow with web3/transfer-funds or web3/write-contract action
+ *   3. execute_workflow → executionId
+ *   4. poll get_execution_status until completed | failed
+ *   5. get_execution_logs → extract txHash
  *
- * Flow:
- *   1. Connect with KEEPERHUB_API_KEY Bearer token
- *   2. Call execute_contract_call → returns executionId
- *   3. Poll get_direct_execution_status until completed | failed
- *   4. Extract txHash → return BaseScan link
+ * Ref: https://docs.keeperhub.com/ai-tools/mcp-server
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -22,65 +22,82 @@ import type { Tool } from "@skillname/sdk";
 
 const KEEPERHUB_PAID_URL =
   process.env.KEEPERHUB_PAID_URL ?? "http://localhost:3001";
+const KH_MCP_URL = "https://app.keeperhub.com/mcp";
+const POLL_INTERVAL_MS = 3_000;
+const POLL_TIMEOUT_MS = 90_000;
+
+const CHAIN_IDS: Record<number, string> = {
+  1: "1",
+  11155111: "11155111",
+  8453: "8453",
+  84532: "84532",
+};
+
+const EXPLORERS: Record<number, string> = {
+  8453: "https://basescan.org/tx/",
+  84532: "https://sepolia.basescan.org/tx/",
+  11155111: "https://sepolia.etherscan.io/tx/",
+  1: "https://etherscan.io/tx/",
+};
 
 // ── x402 client (lazy init) ───────────────────────────────────────────────
 let _x402Fetch: typeof fetch | null = null;
 
 function getX402Fetch(): typeof fetch {
   if (_x402Fetch) return _x402Fetch;
-
   const pk = process.env.AGENT_WALLET_PRIVATE_KEY as `0x${string}` | undefined;
   if (!pk)
     throw new Error(
       "AGENT_WALLET_PRIVATE_KEY not set — needed for paid skill calls",
     );
-
   const account = privateKeyToAccount(pk);
   const publicClient = createPublicClient({
     chain: baseSepolia,
     transport: http(),
   });
   const signer = toClientEvmSigner(account, publicClient);
-
   const scheme = new ExactEvmScheme(signer);
   const client = new x402Client();
   client.register("eip155:84532", scheme);
-
   _x402Fetch = wrapFetchWithPayment(fetch, client) as typeof fetch;
   return _x402Fetch;
 }
 
-const KH_MCP_URL = "https://app.keeperhub.com/mcp";
-const POLL_INTERVAL_MS = 2_000;
-const POLL_TIMEOUT_MS = 60_000;
-
-const BASESCAN: Record<number, string> = {
-  8453: "https://basescan.org/tx/",
-  84532: "https://sepolia.basescan.org/tx/",
-};
-
-// ── Singleton client ───────────────────────────────────────────────────────
+// ── Singleton MCP client ──────────────────────────────────────────────────
 let _client: Client | null = null;
 
 async function getClient(): Promise<Client> {
   if (_client) return _client;
-
   const apiKey = process.env.KEEPERHUB_API_KEY;
   if (!apiKey) throw new Error("KEEPERHUB_API_KEY env var not set");
-
   const client = new Client(
     { name: "skillname-bridge", version: "0.0.1" },
     { capabilities: {} },
   );
-
   await client.connect(
     new StreamableHTTPClientTransport(new URL(KH_MCP_URL), {
       requestInit: { headers: { Authorization: `Bearer ${apiKey}` } },
     }),
   );
-
   _client = client;
   return client;
+}
+
+// ── Cached wallet integration ID ──────────────────────────────────────────
+let _walletId: string | null = null;
+
+async function getWalletId(client: Client): Promise<string> {
+  if (_walletId) return _walletId;
+  const res = await callTool(client, "get_wallet_integration", {});
+  // Response contains the wallet integration ID
+  const match =
+    res.match(
+      /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+    ) ?? res.match(/"id"\s*:\s*"([^"]+)"/);
+  if (!match)
+    throw new Error(`Could not extract walletId from: ${res.slice(0, 200)}`);
+  _walletId = match[0];
+  return _walletId;
 }
 
 // ── Public entry point ─────────────────────────────────────────────────────
@@ -93,122 +110,160 @@ export async function executeViaKeeperHub(
     { type: "keeperhub" }
   >;
   const chainId = exec.chainId ?? 84532;
+  const network = CHAIN_IDS[chainId] ?? String(chainId);
+  const explorer = EXPLORERS[chainId] ?? "https://sepolia.basescan.org/tx/";
 
   // Paid path: route through keeperhub-paid x402 server
   if (exec.payment) {
-    return executeViaPaidServer(tool, args, exec, chainId);
+    return executeViaPaidServer(args, exec, chainId);
   }
 
-  // Free path: call KeeperHub MCP directly
+  // Free path: call KeeperHub MCP directly via workflow
   const client = await getClient();
+  const walletId = await getWalletId(client);
+  const khAction = exec.tool ?? "web3/transfer-funds";
 
-  // Route to the correct KeeperHub tool based on exec.tool
-  const khTool = exec.tool ?? "execute_contract_call";
-
-  if (khTool === "execute_transfer") {
-    // Simple token transfer — different args shape
-    const transferArgs: Record<string, string> = {
-      network: String(chainId),
-      to:
-        (args.to as string) ??
-        (args.recipient_address as string) ??
-        (args.recipient as string) ??
-        "",
-      amount: (args.amount as string) ?? "",
-      token: (args.token as string) ?? "USDC",
-    };
-    const res = await callTool(client, "execute_transfer", transferArgs);
-    const idMatch =
-      res.match(/"?(?:execution_?id|id)"?\s*[:\s]+([a-z0-9_-]{6,})/i) ??
-      res.match(
-        /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
-      );
-    if (!idMatch) return { text: res };
-    const txHash = await pollExecution(client, idMatch[1]);
-    const explorer = BASESCAN[chainId] ?? "https://sepolia.basescan.org/tx/";
-    return {
-      text: `✓ Transfer confirmed\nTx:       ${txHash}\nExplorer: ${explorer}${txHash}`,
-    };
-  }
-
-  // Default: execute_contract_call
-  const contractAddr =
-    (args.contract_address as string) ??
-    (args.contractAddress as string) ??
-    (exec as any).contractAddress ??
+  // Resolve recipient from various arg names Claude might use
+  const to =
+    (args.to as string) ??
+    (args.recipient_address as string) ??
+    (args.recipient as string) ??
+    (args.toAddress as string) ??
     "";
-  const callArgs: Record<string, string> = {
-    network: String(chainId),
-    contract_address: contractAddr,
-    function_name: (exec as any).functionName ?? "",
-    function_args: JSON.stringify(Object.values(args)),
-  };
 
-  if ((exec as any).abi) callArgs.abi = (exec as any).abi;
+  // Build workflow action config based on KeeperHub action type
+  let actionConfig: Record<string, unknown>;
 
-  // Call KeeperHub — returns execution ID for state-changing calls
-  const res = await callTool(client, "execute_contract_call", callArgs);
-
-  // View/pure functions return the result directly (no txHash)
-  if (!res.toLowerCase().includes("execution")) {
-    return { text: res };
+  if (khAction === "execute_transfer" || khAction === "web3/transfer-funds") {
+    actionConfig = {
+      actionType: "web3/transfer-funds",
+      network,
+      toAddress: to,
+      amount: (args.amount as string) ?? "0",
+      walletId,
+    };
+  } else if (khAction === "web3/transfer-token") {
+    actionConfig = {
+      actionType: "web3/transfer-token",
+      network,
+      toAddress: to,
+      tokenAddress:
+        (args.tokenAddress as string) ?? (args.token_address as string) ?? "",
+      amount: (args.amount as string) ?? "0",
+      walletId,
+    };
+  } else if (
+    khAction === "execute_contract_call" ||
+    khAction === "web3/write-contract"
+  ) {
+    actionConfig = {
+      actionType: "web3/write-contract",
+      network,
+      contractAddress:
+        (args.contractAddress as string) ??
+        (args.contract_address as string) ??
+        "",
+      functionName:
+        (args.functionName as string) ?? (args.function_name as string) ?? "",
+      walletId,
+    };
+  } else {
+    // Generic: pass action type through
+    actionConfig = { actionType: khAction, network, walletId, ...args };
   }
 
-  // Extract execution ID and poll
-  const idMatch =
-    res.match(/"?(?:execution_?id|id)"?\s*[:\s]+([a-z0-9_-]{6,})/i) ??
-    res.match(
-      /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
-    );
-  if (!idMatch) {
-    // No execution ID — treat raw response as result
-    return { text: res };
-  }
+  // Create a one-shot workflow
+  const workflowName = `skillname-${tool.name}-${Date.now()}`;
+  const createRes = await callTool(client, "create_workflow", {
+    name: workflowName,
+    description: `Auto-created by skillname bridge for ${tool.name}`,
+    nodes: [
+      {
+        id: "trigger-1",
+        type: "trigger",
+        data: {
+          label: "Manual Trigger",
+          type: "trigger",
+          config: { triggerType: "Manual" },
+          status: "idle",
+        },
+      },
+      {
+        id: "action-1",
+        type: "action",
+        data: {
+          label: tool.name,
+          description: tool.description,
+          type: "action",
+          config: actionConfig,
+          status: "idle",
+        },
+      },
+    ],
+    edges: [{ id: "edge-1", source: "trigger-1", target: "action-1" }],
+  });
 
-  const executionId = idMatch[1];
+  // Extract workflow ID
+  const wfIdMatch = createRes.match(
+    /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+  );
+  if (!wfIdMatch) {
+    return {
+      text: `Failed to create workflow: ${createRes.slice(0, 300)}`,
+      isError: true,
+    };
+  }
+  const workflowId = wfIdMatch[0];
+
+  // Execute the workflow
+  const execRes = await callTool(client, "execute_workflow", { workflowId });
+  const execIdMatch = execRes.match(
+    /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i,
+  );
+  if (!execIdMatch) {
+    return {
+      text: `Failed to execute workflow: ${execRes.slice(0, 300)}`,
+      isError: true,
+    };
+  }
+  const executionId = execIdMatch[0];
+
+  // Poll for completion
   const txHash = await pollExecution(client, executionId);
-  const explorer = BASESCAN[chainId] ?? "https://sepolia.basescan.org/tx/";
+
+  // Clean up: delete the one-shot workflow (best effort)
+  callTool(client, "delete_workflow", { workflowId, force: true }).catch(
+    () => {},
+  );
 
   return {
-    text:
-      `✓ Transaction confirmed\n` +
-      `Tx:       ${txHash}\n` +
-      `Explorer: ${explorer}${txHash}`,
+    text: `✓ Transaction confirmed\nTx:       ${txHash}\nExplorer: ${explorer}${txHash}`,
   };
 }
 
 // ── x402 paid path ─────────────────────────────────────────────────────────
 async function executeViaPaidServer(
-  tool: Tool,
   args: Record<string, unknown>,
   exec: Extract<Tool["execution"], { type: "keeperhub" }>,
   chainId: number,
 ): Promise<{ text: string; isError?: boolean }> {
   const fetchWithPayment = getX402Fetch();
-  const explorer = BASESCAN[chainId] ?? "https://sepolia.basescan.org/tx/";
+  const explorer = EXPLORERS[chainId] ?? "https://sepolia.basescan.org/tx/";
 
-  const body: Record<string, string> = {
+  const to =
+    (args.to as string) ??
+    (args.recipient_address as string) ??
+    (args.recipient as string) ??
+    (args.toAddress as string) ??
+    "";
+
+  const body = {
     network: String(chainId),
+    to,
+    amount: (args.amount as string) ?? "",
+    token: (args.token as string) ?? "USDC",
+    action: exec.tool ?? "web3/transfer-funds",
   };
-
-  const khTool = exec.tool ?? "execute_contract_call";
-  if (khTool === "execute_transfer") {
-    body.to =
-      (args.to as string) ??
-      (args.recipient_address as string) ??
-      (args.recipient as string) ??
-      "";
-    body.amount = (args.amount as string) ?? "";
-    body.token = (args.token as string) ?? "USDC";
-  } else {
-    body.contract_address =
-      (args.contract_address as string) ??
-      (args.contractAddress as string) ??
-      (exec as any).contractAddress ??
-      "";
-    body.function_name = (exec as any).functionName ?? "";
-    body.function_args = JSON.stringify(Object.values(args));
-  }
 
   const res = await fetchWithPayment(`${KEEPERHUB_PAID_URL}/execute`, {
     method: "POST",
@@ -230,14 +285,10 @@ async function executeViaPaidServer(
     result?: string;
     error?: string;
   };
-
   if (data.error) return { text: data.error, isError: true };
   if (data.txHash) {
     return {
-      text:
-        `✓ Transaction confirmed (x402 paid)\n` +
-        `Tx:       ${data.txHash}\n` +
-        `Explorer: ${data.explorerUrl ?? explorer + data.txHash}`,
+      text: `✓ Transaction confirmed (x402 paid)\nTx:       ${data.txHash}\nExplorer: ${data.explorerUrl ?? explorer + data.txHash}`,
     };
   }
   return { text: data.result ?? JSON.stringify(data) };
@@ -253,16 +304,14 @@ async function pollExecution(
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
 
-    const status = await callTool(client, "get_direct_execution_status", {
-      execution_id: executionId,
+    const status = await callTool(client, "get_execution_status", {
+      executionId,
     });
 
     if (status.toLowerCase().includes("complet")) {
-      // Extract 0x... tx hash (64 hex chars)
       const txMatch = status.match(/0x[a-fA-F0-9]{64}/);
       if (txMatch) return txMatch[0];
 
-      // If completed but no hash visible, fetch logs
       const logs = await callTool(client, "get_execution_logs", {
         executionId,
       });
