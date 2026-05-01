@@ -127,7 +127,8 @@
         { "$ref": "#/definitions/LocalExecution" },
         { "$ref": "#/definitions/KeeperHubExecution" },
         { "$ref": "#/definitions/HttpExecution" },
-        { "$ref": "#/definitions/ZGComputeExecution" }
+        { "$ref": "#/definitions/ZGComputeExecution" },
+        { "$ref": "#/definitions/ContractExecution" }
       ]
     },
     "LocalExecution": {
@@ -193,6 +194,44 @@
           "type": "string",
           "description": "Optional system prompt to prepend to user messages"
         }
+      }
+    },
+    "ContractExecution": {
+      "type": "object",
+      "required": ["type", "chainId", "address", "abi", "method"],
+      "properties": {
+        "type": { "const": "contract" },
+        "chainId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "EIP-155 chain ID (e.g. 1 = mainnet, 8453 = Base, 11155111 = Sepolia)"
+        },
+        "address": {
+          "type": "string",
+          "description": "Contract address as 0x… or an ENS name (.eth) resolved at call time",
+          "pattern": "^(0x[a-fA-F0-9]{40}|([a-z0-9-]+\\.)+eth)$",
+          "examples": [
+            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "router.uniswap.eth"
+          ]
+        },
+        "abi": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Viem-compatible ABI fragment(s) covering the called method"
+        },
+        "method": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Function name on the contract"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["read", "write"],
+          "default": "read",
+          "description": "read = eth_call (free, view/pure); write = transaction (signer or KeeperHub)"
+        },
+        "payment": { "$ref": "#/definitions/Payment" }
       }
     },
     "Payment": {

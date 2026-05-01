@@ -587,9 +587,27 @@
         <section class="day-section" id="day-8">
           <div class="day-header">
             <div class="day-num">D8</div>
-            <div class="day-name">skill explorer · ENSIP draft · review queue · #10 closed</div>
+            <div class="day-name">skill explorer · ENSIP draft · review queue · #10 closed · contract execution type</div>
             <div class="label">2026·05·01 · THU · TODAY</div>
           </div>
+
+          <article class="card entry">
+            <div class="hover-flag">FEATURE</div>
+            <div class="entry-time">11:30 · OPEN</div>
+            <div class="entry-title">New <code>type:"contract"</code> execution — direct on-chain calls without a KeeperHub roundtrip</div>
+            <ul>
+              <li>Adds a fifth execution variant alongside <code>local</code> / <code>http</code> / <code>keeperhub</code> / <code>0g-compute</code>: bundle declares <code>{ chainId, address, abi, method, mode }</code> and the bridge dispatches via viem</li>
+              <li>Schema (<code>skill-v1.schema.json</code>): <code>ContractExecution</code> definition + <code>oneOf</code> entry; address pattern accepts either <code>0x…</code> or <code>*.eth</code> for late-bound resolution</li>
+              <li>SDK (<code>packages/sdk/src/index.ts</code>): extends the <code>Execution</code> union — keeps the "all three layers must agree" rule from <code>CLAUDE.md</code></li>
+              <li>Bridge (<code>packages/bridge/src/server.ts</code>): <code>executeContract()</code> handles ENS-name addresses via mainnet resolution, maps named-args → positional via <code>inputSchema.properties</code> order, and uses a chain-keyed <code>publicClient</code> cache; <code>read</code> mode hits <code>readContract</code>, <code>write</code> mode signs with <code>AGENT_WALLET_PRIVATE_KEY</code>; <code>BigInt</code> results JSON-serialize cleanly</li>
+              <li>Paid <code>contract.write</code> deferred — returns a clear "use type:keeperhub" error until x402 routing lands here</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">tsc --noEmit clean</div>
+              <div class="proof">contract.read sample</div>
+            </div>
+          </article>
 
           <article class="card entry">
             <div class="hover-flag">ISSUE #10</div>
