@@ -122,6 +122,28 @@ const ZG_LIST_PROVIDERS_TOOL: MCPTool = {
   inputSchema: { type: "object", properties: {} },
 };
 
+const SKILL_CALL_TOOL: MCPTool = {
+  name: "skill_call",
+  description:
+    'Call an imported skill tool by name. After importing a skill with skill_import, use this tool to execute any of its registered functions. For example, after importing quote.skilltest.eth, call skill_call with toolName "quote-uniswap__get_quote" and the appropriate arguments. ALWAYS use this tool to call imported skill functions — do not use tool_search.',
+  inputSchema: {
+    type: "object",
+    properties: {
+      toolName: {
+        type: "string",
+        description:
+          'The full name of the imported tool to call, e.g. "quote-uniswap__get_quote" or "weather-tomorrow__forecast"',
+      },
+      arguments: {
+        type: "object",
+        description: "Arguments to pass to the tool, matching its inputSchema",
+        additionalProperties: true,
+      },
+    },
+    required: ["toolName", "arguments"],
+  },
+};
+
 // -------------------------------------------------------------------------
 // Tool listing — built-ins + dynamically imported skills
 // -------------------------------------------------------------------------
@@ -133,7 +155,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     for (const t of s.result.bundle.tools) {
       dynamicTools.push({
         name: `${s.result.bundle.name}__${t.name}`,
-        description: `[${s.ensName}] ${t.description}`,
+        description: `[skill: ${s.ensName}] ${t.description} — Call this tool directly by name.`,
         inputSchema: t.inputSchema as MCPTool["inputSchema"],
       });
     }
@@ -143,6 +165,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       SKILL_IMPORT_TOOL,
       SKILL_LIST_TOOL,
+      SKILL_CALL_TOOL,
       ZG_LIST_PROVIDERS_TOOL,
       ...dynamicTools,
     ],
@@ -227,7 +250,10 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
               `Version: ${rootResult.version ?? "unspecified"}\n` +
               `CID: ${rootResult.cid}\n` +
               depLine +
-              `\nTools:\n${toolLines.join("\n")}`,
+              `\nTools now available (call these directly by name):\n${toolLines.join("\n")}\n\n` +
+              `IMPORTANT: These tools are now registered and ready to call. ` +
+              `Use them directly by their full name (e.g. ${flat[0].bundle.name}__${flat[0].bundle.tools[0].name}). ` +
+              `Do NOT use tool_search — call the tool directly.`,
           },
         ],
       };
@@ -263,6 +289,64 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         },
       ],
     };
+  }
+
+  // -- Built-in: call an imported skill tool --
+  if (name === "skill_call") {
+    const toolName = args.toolName as string;
+    const toolArgs = (args.arguments as Record<string, unknown>) ?? {};
+    log.in(`skill_call ${toolName}`);
+
+    // Find the tool across all imported skills
+    const sep = toolName.indexOf("__");
+    if (sep === -1) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Invalid tool name "${toolName}". Expected format: <bundle>__<tool> (e.g. quote-uniswap__get_quote)`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const bundleName = toolName.slice(0, sep);
+    const fnName = toolName.slice(sep + 2);
+
+    let skill: ImportedSkill | undefined;
+    for (const s of imported.values()) {
+      if (s.result.bundle.name === bundleName) {
+        skill = s;
+        break;
+      }
+    }
+    if (!skill) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Skill "${bundleName}" not imported. Use skill_import first.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const tool = skill.result.bundle.tools.find((t) => t.name === fnName);
+    if (!tool) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Tool "${fnName}" not found in skill "${bundleName}". Available: ${skill.result.bundle.tools.map((t) => t.name).join(", ")}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    return await executeRouted(tool, toolArgs, skill);
   }
 
   // -- Built-in: list 0G Compute providers --
