@@ -77,6 +77,15 @@ export type Execution =
       providerAddress: string;
       model?: string;
       systemPrompt?: string;
+    }
+  | {
+      type: "contract";
+      chainId: number;
+      address: string;
+      abi: readonly unknown[];
+      method: string;
+      mode?: "read" | "write";
+      payment?: Payment;
     };
 
 export interface Payment {

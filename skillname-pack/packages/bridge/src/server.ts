@@ -36,6 +36,27 @@ import {
   type ResolveResult,
   type Tool,
 } from "@skillname/sdk";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  isAddress,
+  type Abi,
+  type Chain,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import {
+  arbitrum,
+  arbitrumSepolia,
+  base,
+  baseSepolia,
+  holesky,
+  mainnet,
+  optimism,
+  optimismSepolia,
+  polygon,
+  sepolia,
+} from "viem/chains";
 import { executeVia0GCompute, listProviders } from "./0gcompute.js";
 import { executeViaKeeperHub } from "./keeperhub.js";
 
@@ -452,6 +473,8 @@ async function executeRouted(
       return executeHttp(tool, args, skill);
     case "0g-compute":
       return execute0GCompute(tool, args);
+    case "contract":
+      return executeContract(tool, args, skill);
     default:
       log.err(`unsupported execution: ${(tool.execution as any).type}`);
       return {
@@ -549,6 +572,153 @@ async function executeHttp(
     content: [{ type: "text", text }],
     isError: !res.ok,
   };
+}
+
+const CHAIN_BY_ID: Record<number, Chain> = {
+  1: mainnet,
+  10: optimism,
+  137: polygon,
+  8453: base,
+  17000: holesky,
+  42161: arbitrum,
+  84532: baseSepolia,
+  421614: arbitrumSepolia,
+  11155111: sepolia,
+  11155420: optimismSepolia,
+};
+
+const _publicClients = new Map<
+  number,
+  ReturnType<typeof createPublicClient>
+>();
+function getPublicClient(chainId: number) {
+  let c = _publicClients.get(chainId);
+  if (!c) {
+    const chain = CHAIN_BY_ID[chainId];
+    if (!chain) throw new Error(`unsupported chainId: ${chainId}`);
+    c = createPublicClient({ chain, transport: http() });
+    _publicClients.set(chainId, c);
+  }
+  return c;
+}
+
+function bigintSafeReplacer(_k: string, v: unknown) {
+  return typeof v === "bigint" ? v.toString() : v;
+}
+
+async function resolveContractAddress(
+  client: ReturnType<typeof getPublicClient>,
+  addrOrEns: string,
+): Promise<`0x${string}`> {
+  if (isAddress(addrOrEns)) return addrOrEns as `0x${string}`;
+  // ENS resolution always goes through mainnet, even when the call lands on L2.
+  const mainnetClient = getPublicClient(1);
+  const resolved = await mainnetClient.getEnsAddress({ name: addrOrEns });
+  if (!resolved) throw new Error(`could not resolve ENS name: ${addrOrEns}`);
+  return resolved;
+}
+
+async function executeContract(
+  tool: Tool,
+  args: Record<string, unknown>,
+  _skill: ImportedSkill,
+) {
+  const exec = tool.execution as Extract<
+    Tool["execution"],
+    { type: "contract" }
+  >;
+  const mode = exec.mode ?? "read";
+  log.info(
+    `contract.${mode} → eip155:${exec.chainId}:${exec.address}.${exec.method}`,
+  );
+
+  try {
+    const client = getPublicClient(exec.chainId);
+    const address = await resolveContractAddress(client, exec.address);
+
+    // Map the JSON-RPC-style named-args object onto positional args using the
+    // tool's inputSchema property order. Falls back to insertion order if no
+    // schema is declared.
+    const schemaProps =
+      tool.inputSchema && typeof tool.inputSchema === "object"
+        ? ((tool.inputSchema as { properties?: Record<string, unknown> })
+            .properties ?? null)
+        : null;
+    const order = schemaProps ? Object.keys(schemaProps) : Object.keys(args);
+    const callArgs = order.map((k) => args[k]);
+
+    if (mode === "read") {
+      const t0 = Date.now();
+      const result = await client.readContract({
+        address,
+        abi: exec.abi as Abi,
+        functionName: exec.method,
+        args: callArgs,
+      });
+      log.ok(`contract.read ${exec.method} done in ${Date.now() - t0}ms`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, bigintSafeReplacer, 2),
+          },
+        ],
+      };
+    }
+
+    // mode === "write"
+    if (exec.payment) {
+      log.err(`contract.write with payment requires KeeperHub routing`);
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              `Paid contract.write is not yet wired for type:"contract". ` +
+              `Use type:"keeperhub" with the same payment block until x402 routing lands here.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    if (!AGENT_WALLET_PRIVATE_KEY) {
+      log.err(`AGENT_WALLET_PRIVATE_KEY not set — cannot sign contract.write`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Cannot execute contract.write: AGENT_WALLET_PRIVATE_KEY not set in bridge env.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const account = privateKeyToAccount(
+      AGENT_WALLET_PRIVATE_KEY as `0x${string}`,
+    );
+    const chain = CHAIN_BY_ID[exec.chainId];
+    const wallet = createWalletClient({ account, chain, transport: http() });
+    const t0 = Date.now();
+    const txHash = await wallet.writeContract({
+      address,
+      abi: exec.abi as Abi,
+      functionName: exec.method,
+      args: callArgs,
+      chain,
+    });
+    log.ok(`contract.write ${exec.method} → ${txHash} in ${Date.now() - t0}ms`);
+    return {
+      content: [{ type: "text", text: `Transaction sent: ${txHash}` }],
+    };
+  } catch (e: any) {
+    const msg = e?.shortMessage ?? e?.message ?? String(e);
+    log.err(`contract.${mode} failed: ${msg}`);
+    return {
+      content: [{ type: "text", text: `contract.${mode} failed: ${msg}` }],
+      isError: true,
+    };
+  }
 }
 
 async function execute0GCompute(tool: Tool, args: Record<string, unknown>) {
