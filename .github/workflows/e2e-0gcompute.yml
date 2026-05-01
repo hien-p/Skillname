@@ -42,4 +42,9 @@ jobs:
           # no separate secret needed; same EVM account works on Galileo chain.
           SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
           OG_RPC_URL: https://evmrpc-testnet.0g.ai
+          # Auto-create the ledger + per-provider sub-account on first failure
+          # so CI doesn't need a manual `setup-0g-ledger.ts` run before the
+          # very first e2e. Only triggers on "Sub-account not found"; subsequent
+          # runs reuse the on-chain account and don't spend additional OG.
+          OG_AUTO_INIT_LEDGER: "1"
         run: pnpm --filter @skillname/bridge e2e
