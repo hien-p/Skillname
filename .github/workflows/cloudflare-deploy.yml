@@ -67,6 +67,11 @@ jobs:
       - id: deploy
         name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
+        env:
+          # wrangler-action runs `pnpm add wrangler` inside the workspace root,
+          # which fails with ERR_PNPM_ADDING_TO_ROOT now that apps/* is a workspace.
+          # This flag tells pnpm to allow it.
+          NPM_CONFIG_IGNORE_WORKSPACE_ROOT_CHECK: "true"
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
