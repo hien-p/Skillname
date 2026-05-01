@@ -102,13 +102,41 @@ export async function executeViaKeeperHub(
   // Free path: call KeeperHub MCP directly
   const client = await getClient();
 
-  // Build execute_contract_call arguments from the skill's execution config + caller args.
-  // exec.contractAddress / exec.functionName come from the manifest;
-  // function_args are the tool call inputs ordered as a JSON array.
+  // Route to the correct KeeperHub tool based on exec.tool
+  const khTool = exec.tool ?? "execute_contract_call";
+
+  if (khTool === "execute_transfer") {
+    // Simple token transfer — different args shape
+    const transferArgs: Record<string, string> = {
+      network: String(chainId),
+      to: (args.to as string) ?? "",
+      amount: (args.amount as string) ?? "",
+      token: (args.token as string) ?? "USDC",
+    };
+    const res = await callTool(client, "execute_transfer", transferArgs);
+    const idMatch =
+      res.match(/"?(?:execution_?id|id)"?\s*[:\s]+([a-z0-9_-]{6,})/i) ??
+      res.match(
+        /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
+      );
+    if (!idMatch) return { text: res };
+    const txHash = await pollExecution(client, idMatch[1]);
+    const explorer = BASESCAN[chainId] ?? "https://sepolia.basescan.org/tx/";
+    return {
+      text: `✓ Transfer confirmed\nTx:       ${txHash}\nExplorer: ${explorer}${txHash}`,
+    };
+  }
+
+  // Default: execute_contract_call
+  const contractAddr =
+    (args.contract_address as string) ??
+    (args.contractAddress as string) ??
+    (exec as any).contractAddress ??
+    "";
   const callArgs: Record<string, string> = {
     network: String(chainId),
-    contract_address: (exec as any).contractAddress ?? "",
-    function_name: exec.tool ?? (exec as any).functionName ?? "",
+    contract_address: contractAddr,
+    function_name: (exec as any).functionName ?? "",
     function_args: JSON.stringify(Object.values(args)),
   };
 
@@ -155,12 +183,24 @@ async function executeViaPaidServer(
   const fetchWithPayment = getX402Fetch();
   const explorer = BASESCAN[chainId] ?? "https://sepolia.basescan.org/tx/";
 
-  const body = {
-    contract_address: (exec as any).contractAddress ?? "",
+  const body: Record<string, string> = {
     network: String(chainId),
-    function_name: exec.tool ?? (exec as any).functionName ?? "",
-    function_args: JSON.stringify(Object.values(args)),
   };
+
+  const khTool = exec.tool ?? "execute_contract_call";
+  if (khTool === "execute_transfer") {
+    body.to = (args.to as string) ?? "";
+    body.amount = (args.amount as string) ?? "";
+    body.token = (args.token as string) ?? "USDC";
+  } else {
+    body.contract_address =
+      (args.contract_address as string) ??
+      (args.contractAddress as string) ??
+      (exec as any).contractAddress ??
+      "";
+    body.function_name = (exec as any).functionName ?? "";
+    body.function_args = JSON.stringify(Object.values(args));
+  }
 
   const res = await fetchWithPayment(`${KEEPERHUB_PAID_URL}/execute`, {
     method: "POST",

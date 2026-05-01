@@ -3,62 +3,37 @@
   "name": "swap-uniswap",
   "ensName": "swap.uniswap.eth",
   "version": "1.0.0",
-  "description": "One function: execute a Uniswap V3 token swap on Base Sepolia through KeeperHub. Pay-per-call ($0.05 USDC) via x402.",
+  "description": "One function: transfer USDC on Base Sepolia through KeeperHub. Pay-per-call ($0.05 USDC) via x402.",
   "author": "0x0000000000000000000000000000000000000000",
   "createdAt": "2026-04-28T00:00:00Z",
   "license": "MIT",
   "tools": [
     {
       "name": "execute_swap",
-      "description": "Executes a swap via the Uniswap V3 SwapRouter on Base Sepolia. Pay $0.05 USDC per call through x402; KeeperHub submits the tx. Returns the BaseScan tx hash.",
+      "description": "Transfers USDC on Base Sepolia via KeeperHub. Pay $0.05 USDC per call through x402. Returns the BaseScan tx hash.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "tokenIn": {
+          "to": {
             "type": "string",
             "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "Address of the input ERC-20 (use the WETH9 address for native ETH)"
+            "description": "Recipient wallet address"
           },
-          "tokenOut": {
+          "amount": {
             "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "Address of the output ERC-20"
+            "description": "Amount of USDC to transfer (e.g. 0.01)"
           },
-          "amountIn": {
+          "token": {
             "type": "string",
-            "pattern": "^[0-9]+$",
-            "description": "Input amount in raw units (wei-equivalent for the input token's decimals)"
-          },
-          "amountOutMin": {
-            "type": "string",
-            "pattern": "^[0-9]+$",
-            "description": "Minimum acceptable output amount (slippage guard)"
-          },
-          "recipient": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "Address that receives the output token"
-          },
-          "feeBps": {
-            "type": "integer",
-            "enum": [100, 500, 3000, 10000],
-            "default": 3000,
-            "description": "Uniswap V3 pool fee tier in basis-points"
+            "default": "USDC",
+            "description": "Token symbol (default: USDC)"
           }
         },
-        "required": ["tokenIn", "tokenOut", "amountIn", "amountOutMin", "recipient"]
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "txHash": { "type": "string", "pattern": "^0x[a-fA-F0-9]{64}$" },
-          "amountOut": { "type": "string" }
-        },
-        "required": ["txHash"]
+        "required": ["to", "amount"]
       },
       "execution": {
         "type": "keeperhub",
-        "tool": "execute_contract_call",
+        "tool": "execute_transfer",
         "chainId": 84532,
         "payment": {
           "protocol": "x402",
@@ -69,7 +44,6 @@
       }
     }
   ],
-  "prompts": ["prompts/safety.md"],
   "trust": {
     "ensip25": { "enabled": true },
     "erc8004": {
