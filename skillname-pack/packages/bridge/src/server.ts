@@ -214,8 +214,17 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     log.in(`skill_import ${ensName} (${chain})`);
 
     try {
-      // Walk the full dependency graph (breadth-first, max depth 5)
-      const { root, flat } = await walkImports(ensName, { chain });
+      // Walk the full dependency graph (breadth-first, max depth 5).
+      // useLockfile defaults to true — if the root has a
+      // xyz.manifest.skill.lockfile text record, transitive resolution is
+      // pinned to the lockfile's CIDs (reproducible builds).
+      const { root, flat, lockfile } = await walkImports(ensName, { chain });
+
+      if (lockfile) {
+        log.info(
+          `lockfile in use: ${lockfile.entries.length} entries pinned (root ${ensName})`,
+        );
+      }
 
       // Register all resolved skills (root + transitive deps)
       for (const result of flat) {
