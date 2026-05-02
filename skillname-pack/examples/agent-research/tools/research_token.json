@@ -1,0 +1,6 @@
+{
+  "kind": "local-handler",
+  "version": "1",
+  "language": "javascript",
+  "code": "(async ({ token_id, holder_address }, ctx) => { const [quote, score] = await Promise.all([ ctx.call('quote.skilltest.eth', 'get_quote', { ids: token_id }), ctx.call('score.skilltest.eth', 'trust_score', { address: holder_address }) ]); const price_usd = quote?.[token_id]?.usd ?? null; const passport_score = score?.score ?? 'unknown'; const verdictResp = await ctx.call('infer.skilltest.eth', 'infer', { prompt: `Token \"${token_id}\" trades at $${price_usd}. Holder ${holder_address} has a Gitcoin Passport score of ${passport_score}. In one sentence: is this a reasonable counterparty to interact with on-chain?` }); const verdict = typeof verdictResp === 'string' ? verdictResp : (verdictResp?.text ?? verdictResp?.content ?? JSON.stringify(verdictResp)); return { price_usd, passport_score, verdict }; })"
+}

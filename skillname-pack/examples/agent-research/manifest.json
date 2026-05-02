@@ -1,0 +1,53 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "agent-research",
+  "ensName": "agent.skilltest.eth",
+  "version": "1.0.0",
+  "description": "Composite skill: research a token + holder by fanning out to three atomic skills — quote (price), score (Passport reputation), infer (LLM verdict). Demonstrates the import-graph: one ENS name resolves to three transitive tools at the bridge.",
+  "createdAt": "2026-05-02T00:00:00Z",
+  "license": "MIT",
+  "dependencies": [
+    "quote.skilltest.eth",
+    "score.skilltest.eth",
+    "infer.skilltest.eth"
+  ],
+  "tools": [
+    {
+      "name": "research_token",
+      "description": "Fan out to three imported skills: get the token's USD price via quote.skilltest.eth, the holder's Gitcoin Passport score via score.skilltest.eth, then ask infer.skilltest.eth (0G Compute) for a one-sentence verdict on whether to interact. Returns all three artefacts plus the verdict.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["token_id", "holder_address"],
+        "properties": {
+          "token_id": {
+            "type": "string",
+            "description": "CoinGecko coin id (e.g. 'ethereum', 'usd-coin')",
+            "examples": ["ethereum", "usd-coin"]
+          },
+          "holder_address": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "Ethereum address of the holder to score"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "price_usd": { "type": "number" },
+          "passport_score": { "type": "string" },
+          "verdict": { "type": "string" }
+        }
+      },
+      "execution": {
+        "type": "local",
+        "handler": "tools/research_token.json"
+      }
+    }
+  ],
+  "trust": {
+    "ensip25": {
+      "enabled": true
+    }
+  }
+}

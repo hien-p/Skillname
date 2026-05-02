@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import 'dotenv/config'
 /**
  * Create subnames on Sepolia for each reference skill bundle in
  * skillname-pack/examples, set their ENS text records to the bundle CID,
@@ -90,12 +91,13 @@ function parseArgs(): Args {
 async function main(): Promise<void> {
   const { parent, cids, roots } = parseArgs()
 
-  const PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY as Hex | undefined
+  const RAW_KEY = process.env.SEPOLIA_PRIVATE_KEY
   const RPC_URL = process.env.SEPOLIA_RPC_URL ?? 'https://rpc.sepolia.org'
-  if (!PRIVATE_KEY) {
+  if (!RAW_KEY) {
     console.error('SEPOLIA_PRIVATE_KEY env var not set.')
     process.exit(1)
   }
+  const PRIVATE_KEY = (RAW_KEY.startsWith('0x') ? RAW_KEY : `0x${RAW_KEY}`) as Hex
 
   const account = privateKeyToAccount(PRIVATE_KEY)
   console.log(`Operator: ${account.address}`)
@@ -130,12 +132,23 @@ async function main(): Promise<void> {
 
   console.log(`Found ${bundleDirs.length} bundles: ${bundleDirs.join(', ')}\n`)
 
+  // When --roots or --cids targets specific slugs, only operate on those.
+  // Otherwise we'd re-issue setSubnodeRecord for every existing leaf and
+  // burn gas overwriting them — a real cost that hit a register run on
+  // 2026-05-02 (#agent-research publish).
+  const targeted = new Set([...Object.keys(roots), ...Object.keys(cids)])
+  const onlyTargeted = targeted.size > 0
+
   let subnamesCreated = 0
   let recordsSet = 0
 
   for (const slug of bundleDirs) {
+    if (onlyTargeted && !targeted.has(slug)) {
+      console.log(`[${slug}] not in --roots / --cids, skipping`)
+      continue
+    }
     const manifestPath = join(examplesDir, slug, 'manifest.json')
-    let manifest: { ensName: string; version: string }
+    let manifest: { ensName: string; version: string; dependencies?: string[] }
     try {
       manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
     } catch (e) {
@@ -188,6 +201,9 @@ async function main(): Promise<void> {
     }
     records.push(['xyz.manifest.skill.version', manifest.version])
     records.push(['xyz.manifest.skill.schema', 'https://manifest.eth/schemas/skill-v1.json'])
+    if (manifest.dependencies && manifest.dependencies.length > 0) {
+      records.push(['xyz.manifest.skill.imports', manifest.dependencies.join(',')])
+    }
 
     for (const [key, value] of records) {
       try {
