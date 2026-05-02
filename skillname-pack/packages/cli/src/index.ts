@@ -17,6 +17,7 @@ import { resolve } from "./commands/resolve.js";
 import { verify } from "./commands/verify.js";
 import { init } from "./commands/init.js";
 import { registerOnchain } from "./commands/register-onchain.js";
+import { publish } from "./commands/publish.js";
 
 const HELP = `
 skill — ENS-native skill registry CLI
@@ -26,7 +27,7 @@ Commands:
   verify           <ensName>   Validate schema + ENSIP-25 trust for a skill
   init             <name>      Scaffold a new skill bundle directory
   register-onchain <ensName>   Register a deployed impl in the SkillLink registry
-  publish          <dir> <ens> Publish a bundle to IPFS + set ENS text records
+  publish          <dir> <ens> Pin a bundle to 0G + set ENS text records
   lock             <ensName>   Generate a lockfile from skill imports
 
 Options:
@@ -44,6 +45,7 @@ Examples:
   skill init my-skill
   skill register-onchain quote.uniswap.skilltest.eth \\
     --impl 0x1234… --selectors 0xa9059cbb
+  skill publish skillname-pack/examples/quote-uniswap quote.skilltest.eth
 `.trim();
 
 function parseArgs(argv: string[]) {
@@ -137,8 +139,11 @@ async function main() {
       break;
 
     case "publish":
-      console.error("skill publish — not yet implemented. See issue #17.");
-      process.exit(1);
+      if (!positional[0] || !positional[1]) {
+        console.error("Usage: skill publish <bundleDir> <ensName>");
+        process.exit(1);
+      }
+      await publish(positional[0], positional[1]);
       break;
 
     case "lock":

@@ -49,6 +49,29 @@ This document collects friction we hit, reproducible bugs, doc gaps that slowed 
 
 **Logs / tx hash / screenshot:** Claude Desktop session, 2026-05-01 19:10 ICT — full x402 payment flow completed successfully up to the KeeperHub call.
 
+**Update 2026-05-02:** After re-reading the KeeperHub MCP docs, the canonical execution path is workflow-based (`get_wallet_integration` → `create_workflow` → `execute_workflow`), not the standalone `execute_transfer` tool we originally tried. PR #55 refactored our integration to match the documented surface. The 502 in step 3 is consistent with calling a tool that doesn't exist on KeeperHub's MCP — they returned a generic gateway error rather than `MethodNotFound`. Worth surfacing the actual list of available tools in error responses, or making `tools/list` discovery more prominent in the docs.
+
+### B-002 — 2026-05-02 — High
+
+**Tool / endpoint:** `get_wallet_integration` via `https://app.keeperhub.com/mcp`
+
+**Steps to reproduce:**
+
+1. Connect to KeeperHub MCP with `StreamableHTTPClientTransport` + Bearer token
+2. Call `tools/list` — observe `get_wallet_integration` is present in the response
+3. Call `get_wallet_integration` with `arguments: {}` (the docs example shows no args)
+4. Observe response
+
+**Expected:** Either `(a)` returns the list of wallet integrations belonging to the account associated with the Bearer key, or `(b)` returns a clear `MissingRequiredParameter: <name>` error naming the field.
+
+**Actual:** `MCP error -32602: Input validation error: Invalid arguments for tool get_wallet_integration: [{ "expected": "string", "code": "invalid_type" }]`. The validation error doesn't include `path`, so we can't see *which* field is required.
+
+**Workaround:** None found. Tried `{ chain: "84532" }`, `{ network: "84532" }`, `{ name: "default" }` — all rejected with the same opaque error. Cannot proceed past the very first step of the workflow flow.
+
+**Logs / tx hash / screenshot:** keeperhub-paid e2e run on 2026-05-02 — see PR #62 logs. The x402 challenge layer (`paymentMiddleware` + EIP-3009 signing + `wrapFetchWithPayment`) all pass; the request reaches our `/execute` handler and gets stuck on the very first KeeperHub call.
+
+**Suggested fix:** Include the `path` array in `MCP error -32602` responses so the validation error indicates *which* argument is missing or wrong. Or, even better, accept `{}` and return all wallet integrations the Bearer key has access to — that's the natural "list" semantics.
+
 <!-- Aim for 1-2 reproducible bugs. Even if minor, specificity wins. -->
 
 ---
