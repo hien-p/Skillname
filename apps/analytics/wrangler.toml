@@ -16,8 +16,8 @@ crons = ["* * * * *"]
 
 [vars]
 # SkillLink registry on Sepolia. Update post-NameWrapper-aware redeploy.
-SKILLLINK_ADDRESS = "0xE2532C1dB5FceFA946Ee64D44c22027c070DE8Aa"
+SKILLLINK_ADDRESS = "0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5"
 SEPOLIA_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
 # Block to start scanning from. Set to the deploy block of SkillLink so we
 # don't sweep all of Sepolia history on first run.
-START_BLOCK = "10769398"
+START_BLOCK = "10772615"
