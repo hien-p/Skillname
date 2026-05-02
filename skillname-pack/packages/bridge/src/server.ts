@@ -39,9 +39,12 @@ import {
 import {
   createPublicClient,
   createWalletClient,
+  decodeFunctionResult,
+  encodeFunctionData,
   getAbiItem,
   http,
   isAddress,
+  namehash,
   type Abi,
   type AbiFunction,
   type Chain,
@@ -608,6 +611,27 @@ function bigintSafeReplacer(_k: string, v: unknown) {
   return typeof v === "bigint" ? v.toString() : v;
 }
 
+// SkillLink registry — canonical deployments per chainId. Override per-tool
+// via exec.registry on the manifest if you need a different one.
+const SKILLLINK_BY_CHAIN: Record<number, `0x${string}`> = {
+  // Sepolia: see contracts/script/Deploy.s.sol output. Update after redeploy
+  // with the NameWrapper-aware version.
+  11155111: "0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5",
+};
+
+const SKILLLINK_CALL_ABI = [
+  {
+    type: "function",
+    name: "call",
+    stateMutability: "payable",
+    inputs: [
+      { name: "node", type: "bytes32" },
+      { name: "data", type: "bytes" },
+    ],
+    outputs: [{ name: "result", type: "bytes" }],
+  },
+] as const;
+
 async function resolveContractAddress(
   client: ReturnType<typeof getPublicClient>,
   addrOrEns: string,
@@ -656,6 +680,117 @@ function mapArgsViaAbi(
   return order.map((k) => args[k]);
 }
 
+async function executeViaRegistry(
+  client: ReturnType<typeof getPublicClient>,
+  exec: Extract<Tool["execution"], { type: "contract" }>,
+  callArgs: unknown[],
+  mode: "read" | "write",
+) {
+  if (!exec.address.endsWith(".eth")) {
+    log.err(`useRegistry: true requires .eth address, got ${exec.address}`);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `useRegistry: true requires exec.address to be an ENS name (.eth). Got "${exec.address}".`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  const registryAddr =
+    (exec.registry as `0x${string}` | undefined) ??
+    SKILLLINK_BY_CHAIN[exec.chainId];
+  if (!registryAddr) {
+    log.err(`no SkillLink address known for chainId ${exec.chainId}`);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `No canonical SkillLink address for chainId ${exec.chainId}. Set exec.registry explicitly on the manifest.`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  const node = namehash(exec.address);
+  const innerCalldata = encodeFunctionData({
+    abi: exec.abi as Abi,
+    functionName: exec.method,
+    args: callArgs,
+  });
+
+  log.info(
+    `via SkillLink ${registryAddr} → node ${node.slice(0, 10)}… inner ${innerCalldata.slice(0, 10)}…`,
+  );
+
+  if (mode === "read") {
+    const t0 = Date.now();
+    const { result } = await client.simulateContract({
+      address: registryAddr,
+      abi: SKILLLINK_CALL_ABI,
+      functionName: "call",
+      args: [node, innerCalldata],
+    });
+    // SkillLink.call returns the raw bytes from the impl — decode against the
+    // bundle's ABI so the user sees a typed result, not 0x-encoded bytes.
+    const decoded = decodeFunctionResult({
+      abi: exec.abi as Abi,
+      functionName: exec.method,
+      data: result as `0x${string}`,
+    });
+    log.ok(`registry.read ${exec.method} done in ${Date.now() - t0}ms`);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(decoded, bigintSafeReplacer, 2),
+        },
+      ],
+    };
+  }
+
+  // write — signed via AGENT_WALLET_PRIVATE_KEY, fires SkillCalled event
+  if (!AGENT_WALLET_PRIVATE_KEY) {
+    log.err(`AGENT_WALLET_PRIVATE_KEY not set — cannot sign registry.write`);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Cannot execute registry.write: AGENT_WALLET_PRIVATE_KEY not set in bridge env.`,
+        },
+      ],
+      isError: true,
+    };
+  }
+  const account = privateKeyToAccount(
+    AGENT_WALLET_PRIVATE_KEY as `0x${string}`,
+  );
+  const chain = CHAIN_BY_ID[exec.chainId];
+  const wallet = createWalletClient({ account, chain, transport: http() });
+  const t0 = Date.now();
+  const txHash = await wallet.writeContract({
+    address: registryAddr,
+    abi: SKILLLINK_CALL_ABI,
+    functionName: "call",
+    args: [node, innerCalldata],
+    chain,
+  });
+  log.ok(
+    `registry.write ${exec.method} → ${txHash} in ${Date.now() - t0}ms (SkillCalled event fires)`,
+  );
+  return {
+    content: [
+      {
+        type: "text",
+        text: `Transaction sent via SkillLink registry: ${txHash}`,
+      },
+    ],
+  };
+}
+
 async function executeContract(
   tool: Tool,
   args: Record<string, unknown>,
@@ -672,7 +807,6 @@ async function executeContract(
 
   try {
     const client = getPublicClient(exec.chainId);
-    const address = await resolveContractAddress(client, exec.address);
 
     // Map the named-args object onto positional args using the ABI as the
     // canonical source of order: read the matching AbiFunction's `inputs[].name`,
@@ -680,6 +814,16 @@ async function executeContract(
     // for ABIs that lack the function entry (rare; e.g. proxy patterns where the
     // method dispatches through a fallback). Fails loud on missing args.
     const callArgs = mapArgsViaAbi(exec.abi as Abi, exec.method, args, tool);
+
+    // ── Registry-routed dispatch (opt-in via useRegistry: true) ────────────
+    // Goes through SkillLink.call(namehash(address), encodedCalldata) instead
+    // of the direct impl. Adds the on-chain selector allowlist + SkillCalled
+    // analytics event for paths that traverse a real tx (write mode).
+    if (exec.useRegistry) {
+      return await executeViaRegistry(client, exec, callArgs, mode);
+    }
+
+    const address = await resolveContractAddress(client, exec.address);
 
     if (mode === "read") {
       const t0 = Date.now();

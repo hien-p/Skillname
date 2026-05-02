@@ -231,6 +231,16 @@
           "default": "read",
           "description": "read = eth_call (free, view/pure); write = transaction (signer or KeeperHub)"
         },
+        "useRegistry": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, the bridge dispatches through SkillLink.call(namehash(address), calldata) instead of calling the impl directly. Requires `address` to be an ENS name registered in the registry. Adds the on-chain selector allowlist + SkillCalled analytics event to off-chain MCP calls."
+        },
+        "registry": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{40}$",
+          "description": "Optional override for the SkillLink registry address. If omitted, the bridge uses its hardcoded canonical deployment per chainId."
+        },
         "payment": { "$ref": "#/definitions/Payment" }
       }
     },
