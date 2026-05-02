@@ -575,7 +575,8 @@
 
       <aside class="card day-rail" id="dayRail">
         <div class="label">DAYS</div>
-        <a class="day-btn active" href="#day-8"><span class="num">d8</span><span class="date">may 01</span></a>
+        <a class="day-btn active" href="#day-9"><span class="num">d9</span><span class="date">may 02</span></a>
+        <a class="day-btn" href="#day-8"><span class="num">d8</span><span class="date">may 01</span></a>
         <a class="day-btn" href="#day-7"><span class="num">d7</span><span class="date">apr 30</span></a>
         <a class="day-btn" href="#day-6"><span class="num">d6</span><span class="date">apr 29</span></a>
         <a class="day-btn" href="#day-5"><span class="num">d5</span><span class="date">apr 28</span></a>
@@ -583,12 +584,71 @@
 
       <main>
 
+        <!-- ── DAY 9 ── -->
+        <section class="day-section" id="day-9">
+          <div class="day-header">
+            <div class="day-num">D9</div>
+            <div class="day-name">composite skill demo · agent.skilltest.eth published · dependency graph wired · publish-flow fixes</div>
+            <div class="label">2026·05·02 · FRI · TODAY</div>
+          </div>
+
+          <article class="card entry">
+            <div class="hover-flag">FEATURE</div>
+            <div class="entry-time">16:50 · STAGING</div>
+            <div class="entry-title">First composite skill on-chain — <code>agent.skilltest.eth</code> imports three atomic leaves</div>
+            <ul>
+              <li>New bundle <code>skillname-pack/examples/agent-research</code>: <code>name: agent-research</code>, <code>ensName: agent.skilltest.eth</code>, <code>dependencies: [quote.skilltest.eth, score.skilltest.eth, infer.skilltest.eth]</code> — validates green against <code>skill-v1.schema.json</code></li>
+              <li>One <code>local</code> tool <code>research_token(token_id, holder_address)</code> with a real fan-out handler at <code>tools/research_token.json</code>: parallel <code>quote.get_quote</code> + <code>score.trust_score</code>, then sequential <code>infer.infer</code> for a one-sentence verdict — anticipates the 2-arg <code>(input, ctx)</code> signature for when bridge local-exec lands</li>
+              <li>Pinned to 0G Galileo: root <code>0x71a02456cd57fec6603520cf14230fabfc3e7caa82a0419399f70fc6dfb80d59</code></li>
+              <li>ENS subname registered on Sepolia under parent <code>skilltest.eth</code> with four text records: <code>xyz.manifest.skill = 0g://0x71a0…</code>, <code>.version = 1.0.0</code>, <code>.schema</code>, and the new <code>.imports = quote.skilltest.eth,score.skilltest.eth,infer.skilltest.eth</code></li>
+              <li>The Dependencies tab on <code>/#/skill/agent.skilltest.eth</code> now renders three IMPORT cards — first non-leaf in the registry</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">deps tab · 3 IMPORT cards</div>
+              <div class="proof">on-chain text records</div>
+            </div>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">FIX</div>
+            <div class="entry-time">17:00 · STAGING</div>
+            <div class="entry-title">Web read the wrong manifest field for dependencies</div>
+            <ul>
+              <li>Skill detail view at <code>apps/web/index.html</code> read <code>manifest.imports</code> (a roadmap-#3 placeholder), but the schema-canonical field — agreed with <code>packages/sdk/src/index.ts</code> and the bridge dep-walker — is <code>manifest.dependencies</code></li>
+              <li>Effect: every published bundle's deps tab showed the empty-state regardless of imports. The bug was masked because all five existing leaves were dependency-free</li>
+              <li>Fix: rename the read at three call sites, update the empty-state copy, sync the count badge. Bridge merge logic (<code>parseImports</code> in SDK) already handles both the ENS text record and the bundle field</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">diff: manifest.imports → manifest.dependencies</div>
+            </div>
+          </article>
+
+          <article class="card entry">
+            <div class="hover-flag">CHORE</div>
+            <div class="entry-time">17:10 · STAGING</div>
+            <div class="entry-title">Publish-flow housekeeping — three quiet bugs that bit during the agent-research publish</div>
+            <ul>
+              <li><code>scripts/pin-to-0g.ts</code>: the 0G Go CLI logs <code>file uploaded, root = 0x…</code> via logrus to <strong>stderr</strong>, but the script used <code>execFileSync</code> which only returns stdout. Every successful pin was being misreported as <code>no root in CLI output</code>. Switched to <code>spawnSync</code> and merge both streams</li>
+              <li><code>scripts/register-skills.ts</code>: when <code>--roots</code> / <code>--cids</code> targeted a single slug, the loop still walked every bundle dir and re-issued <code>setSubnodeRecord</code> against each leaf — overwriting owner/resolver and burning gas. Now skips bundles not in the args. Also <code>import 'dotenv/config'</code> + tolerates a private key that's missing the <code>0x</code> prefix</li>
+              <li><code>scripts/register-skills.ts</code>: extended to write <code>xyz.manifest.skill.imports = "<dep1>,<dep2>,…"</code> from <code>manifest.dependencies</code>. Matches the canonical key from <code>CLAUDE.md</code> and the SDK's <code>SKILL_IMPORTS_KEY</code></li>
+              <li><code>.github/workflows/pin-and-register.yml</code>: resolved 6 leftover merge-conflict markers (3 conflict blocks). Kept the <code>OG_INDEXER_URL</code> env var on the pin step and the hard-fail <code>::error::</code> + <code>exit 1</code> when the pin step produces no roots — silent skip would mask broken faucet runs</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">spawnSync diff</div>
+              <div class="proof">workflow yaml clean</div>
+            </div>
+          </article>
+        </section>
+
         <!-- ── DAY 8 ── -->
         <section class="day-section" id="day-8">
           <div class="day-header">
             <div class="day-num">D8</div>
             <div class="day-name">skill explorer · ENSIP draft · review queue · #10 closed · contract execution type · x402 e2e</div>
-            <div class="label">2026·05·01 · THU · TODAY</div>
+            <div class="label">2026·05·01 · THU</div>
           </div>
 
           <article class="card entry">

@@ -1875,6 +1875,9 @@
           <div class="label">SKILLLINK · sepolia</div>
           <div class="metric-value" style="margin-top:6px;font-size:42px" id="onchainCount">—</div>
           <div class="label" style="margin-top:2px">SKILLS REGISTERED</div>
+          <div class="label" style="margin-top:8px;font-size:10px;color:var(--text-secondary)">
+            <span id="nftCount">—</span> SkillNFT · <span id="agentCount">—</span> agents
+          </div>
         </div>
         <div class="metric-foot" style="flex-direction:column;align-items:stretch;gap:8px">
           <button id="onchainRun" type="button" style="background:var(--text-display);color:var(--black);border:none;padding:10px 14px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border-radius:0">
@@ -2311,13 +2314,25 @@
   const WEATHER_TOMORROW = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"weather-tomorrow","ensName":"weather.tomorrow.eth","version":"1.0.0","description":"One function: get the current and next-day weather forecast for a lat/lng. Free, no auth, via Open-Meteo.","license":"MIT","tools":[{"name":"forecast","description":"Returns hourly + daily forecast.","execution":{"type":"http","endpoint":"https://api.open-meteo.com/v1/forecast","method":"GET"}}],"trust":{"ensip25":{"enabled":true},"erc8004":{"registry":"eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4","agentId":10}}};
   const HELLO_WORLD = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"hello-world","ensName":"hello.world.eth","version":"1.0.0","description":"One function: greet a name. The smallest possible local-execution skill.","license":"MIT","tools":[{"name":"greet","description":"Returns 'Hello, {name}!' Runs locally inside the bridge process.","execution":{"type":"local","handler":"tools/greet.json"}}],"trust":{"ensip25":{"enabled":true},"erc8004":{"registry":"eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4","agentId":6}}};
   const INFER_0G = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"infer-0g","ensName":"infer.skilltest.eth","version":"1.0.0","description":"AI inference via 0G Compute Network. Routes prompts to decentralized GPU providers.","license":"MIT","tools":[{"name":"infer","description":"Run AI inference on 0G Compute Network.","execution":{"type":"0g-compute","providerAddress":"0xa48f01287233509FD694a22Bf840225062E67836","model":"qwen/qwen-2.5-7b-instruct"}}]};
+  const AGENT_RESEARCH = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"agent-research","ensName":"agent.skilltest.eth","version":"1.0.0","description":"Composite skill: research a token + holder by fanning out to three atomic skills — quote (price), score (Passport reputation), infer (LLM verdict). Demonstrates the import-graph: one ENS name resolves to three transitive tools at the bridge.","license":"MIT","dependencies":["quote.skilltest.eth","score.skilltest.eth","infer.skilltest.eth"],"tools":[{"name":"research_token","description":"Fan out to three imported skills: get the token's USD price via quote.skilltest.eth, the holder's Gitcoin Passport score via score.skilltest.eth, then ask infer.skilltest.eth (0G Compute) for a one-sentence verdict.","execution":{"type":"local","handler":"tools/research_token.json"}}],"trust":{"ensip25":{"enabled":true}}};
+  // Synthetic v2 — same shape as v1, version + description bumped. Mirrors
+  // what scripts/setup-versions.ts pinned to 0G.
+  const QUOTE_UNISWAP_V2 = {
+    ...QUOTE_UNISWAP,
+    ensName: "v2.quote.skilltest.eth",
+    version: "2.0.0",
+    description: "(v2) " + QUOTE_UNISWAP.description,
+  };
   const MANIFEST_CACHE = {
     'quote.skilltest.eth': QUOTE_UNISWAP, 'quote.uniswap.eth': QUOTE_UNISWAP,
+    'v1.quote.skilltest.eth': QUOTE_UNISWAP,
+    'v2.quote.skilltest.eth': QUOTE_UNISWAP_V2,
     'swap.skilltest.eth': SWAP_UNISWAP, 'swap.uniswap.eth': SWAP_UNISWAP,
     'score.skilltest.eth': SCORE_GITCOIN, 'score.gitcoin.eth': SCORE_GITCOIN,
     'weather.skilltest.eth': WEATHER_TOMORROW, 'weather.tomorrow.eth': WEATHER_TOMORROW,
     'hello.skilltest.eth': HELLO_WORLD, 'hello.world.eth': HELLO_WORLD,
     'infer.skilltest.eth': INFER_0G,
+    'agent.skilltest.eth': AGENT_RESEARCH,
   };
 
   async function fetchManifest(uri, ensName) {
@@ -2346,14 +2361,78 @@
     throw new Error(`unsupported scheme: ${uri.slice(0, 12)}…`);
   }
 
+  // ── Versioning support — quote.skilltest.eth@^1 / @latest etc. ────────────
+  // Mirrors @skillname/sdk's resolveVersionedName + semverSatisfies.
+  const VERSIONS_KEY = 'xyz.manifest.skill.versions';
+  function parseSemver(v) {
+    const m = String(v).match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+    if (!m) throw new Error(`invalid semver: "${v}"`);
+    return { major: +m[1], minor: +m[2], patch: +m[3] };
+  }
+  function cmpSemver(a, b) {
+    return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
+  }
+  function normalizeShorthand(v) {
+    const s = v.startsWith('v') ? v.slice(1) : v;
+    const p = s.split('.');
+    while (p.length < 3) p.push('0');
+    return p.join('.');
+  }
+  function semverSatisfies(v, range) {
+    range = range.trim();
+    if (range === '*' || range === 'latest' || range === '') return true;
+    const sv = parseSemver(v);
+    if (range.startsWith('^')) {
+      const r = parseSemver(normalizeShorthand(range.slice(1)));
+      return sv.major === r.major && cmpSemver(sv, r) >= 0;
+    }
+    if (range.startsWith('~')) {
+      const r = parseSemver(normalizeShorthand(range.slice(1)));
+      return sv.major === r.major && sv.minor === r.minor && cmpSemver(sv, r) >= 0;
+    }
+    return cmpSemver(sv, parseSemver(normalizeShorthand(range))) === 0;
+  }
+  function parseVersionsRecord(raw) {
+    if (!raw) return [];
+    return raw.split(',').map(p => p.trim()).filter(Boolean).map(pair => {
+      const i = pair.indexOf(':');
+      if (i === -1) throw new Error(`malformed versions entry: "${pair}"`);
+      return { label: pair.slice(0, i).trim(), version: pair.slice(i + 1).trim() };
+    });
+  }
+  async function resolveVersionedName(nameAtRange, chain) {
+    const i = nameAtRange.indexOf('@');
+    if (i === -1) return nameAtRange;
+    const parent = nameAtRange.slice(0, i);
+    const range = nameAtRange.slice(i + 1);
+    const client = clients[chain];
+    const versionsRaw = await client.getEnsText({ name: normalize(parent), key: VERSIONS_KEY });
+    if (!versionsRaw) {
+      throw new Error(`${parent} has no ${VERSIONS_KEY} text record — cannot match range "${range}"`);
+    }
+    const idx = parseVersionsRecord(versionsRaw);
+    const matches = idx.filter(e => semverSatisfies(e.version, range));
+    if (matches.length === 0) {
+      throw new Error(`no version in ${parent} satisfies "${range}". Available: ${idx.map(e => `${e.label}:${e.version}`).join(', ')}`);
+    }
+    matches.sort((a, b) => cmpSemver(parseSemver(b.version), parseSemver(a.version)));
+    return `${matches[0].label}.${parent}`;
+  }
+
   async function resolveSkill(name, chain) {
     const t0 = performance.now();
+    // Versioned input ("name@^1") — resolve to concrete subname first.
+    let resolvedFromRange;
+    if (name.includes('@')) {
+      resolvedFromRange = name;
+      name = await resolveVersionedName(name, chain);
+    }
     const client = clients[chain];
     const normalized = normalize(name);
     const uri = await client.getEnsText({ name: normalized, key: SKILL_KEY });
     if (!uri) throw new Error(`no ${SKILL_KEY} text record on ${name}`);
     const result = await fetchManifest(uri, normalized);
-    return { ...result, ms: Math.round(performance.now() - t0) };
+    return { ...result, ms: Math.round(performance.now() - t0), resolvedFromRange };
   }
 
   let liveResolveActive = false;
@@ -2440,7 +2519,7 @@
     `;
 
     $('#tabToolsCount').textContent = manifest.tools.length;
-    $('#tabDepsCount').textContent = (manifest.imports || []).length;
+    $('#tabDepsCount').textContent = (manifest.dependencies || []).length;
     $('#skillDetailToolsHeader').textContent = `Tools (${manifest.tools.length})`;
 
     const toolsHost = $('#skillDetailTools');
@@ -2472,17 +2551,19 @@
       toolsHost.appendChild(card);
     }
 
-    // Dependencies — manifest.imports is the planned schema field (Issue #3).
+    // Dependencies — manifest.dependencies (schema-canonical field).
+    // The bridge merges this with the xyz.manifest.skill.imports ENS text record
+    // when walking the graph (sdk parseImports).
     const depsHost = $('#skillDetailDeps');
-    const imports = manifest.imports || [];
-    if (imports.length === 0) {
+    const deps = manifest.dependencies || [];
+    if (deps.length === 0) {
       depsHost.innerHTML = `<div class="empty-state">
         <strong>No dependencies</strong>
-        This is a leaf skill — its <code>imports[]</code> array is empty, so the bridge can register it without walking a graph.
-        Once Issue #3 ships, multi-skill agents will list their imports here as ENS pointers (<code>quote.uniswap.eth</code>, <code>swap.uniswap.eth</code>…) and the bridge will resolve transitively.
+        This is a leaf skill — its <code>dependencies[]</code> array is empty, so the bridge can register it without walking a graph.
+        Composite skills list their imports here as ENS pointers (<code>quote.uniswap.eth</code>, <code>swap.uniswap.eth</code>…) and the bridge resolves them transitively.
       </div>`;
     } else {
-      depsHost.innerHTML = imports.map(d =>
+      depsHost.innerHTML = deps.map(d =>
         `<div class="tool-card"><header><span class="exec-tag">IMPORT</span><h3>${d}</h3></header></div>`
       ).join('');
     }
@@ -2649,22 +2730,31 @@
   // composition demo (agg.skilltest.eth → BestQuoteAggregator → uni + sushi)
   // when the user clicks RUN DEMO.
   const SKILLLINK_ADDR = '0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5';
+  const IDENTITY_REGISTRY_ADDR = '0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4';
+  const SKILL_NFT_ADDR = '0xa16e83529d9bed52e74673a08f4c8255b1102827';
   const SKILLLINK_ABI = parseAbi([
     'function skillCount() external view returns (uint256)',
     'function call(bytes32 node, bytes data) external payable returns (bytes)',
   ]);
+  const COUNT_ABI = parseAbi([
+    'function totalSupply() external view returns (uint256)',
+    'function lastId() external view returns (uint256)',
+  ]);
   const sepoliaPublic = createPublicClient({ chain: sepolia, transport: http() });
 
   async function refreshOnchainCount() {
-    try {
-      const n = await sepoliaPublic.readContract({
-        address: SKILLLINK_ADDR,
-        abi: SKILLLINK_ABI,
-        functionName: 'skillCount',
-      });
-      $('#onchainCount').textContent = String(n);
-    } catch (e) {
-      $('#onchainCount').textContent = '?';
+    const reads = [
+      [SKILLLINK_ADDR,        'skillCount',  '#onchainCount'],
+      [SKILL_NFT_ADDR,        'totalSupply', '#nftCount'],
+      [IDENTITY_REGISTRY_ADDR,'lastId',      '#agentCount'],
+    ];
+    for (const [addr, fn, sel] of reads) {
+      try {
+        const n = await sepoliaPublic.readContract({ address: addr, abi: COUNT_ABI, functionName: fn });
+        $(sel).textContent = String(n);
+      } catch (_) {
+        $(sel).textContent = '?';
+      }
     }
   }
   refreshOnchainCount();
