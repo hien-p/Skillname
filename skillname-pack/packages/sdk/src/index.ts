@@ -33,6 +33,9 @@ export const SKILL_EXECUTION_KEY = "xyz.manifest.skill.execution";
 export const SKILL_0G_KEY = "xyz.manifest.skill.0g";
 export const SKILL_IMPORTS_KEY = "xyz.manifest.skill.imports";
 export const SKILL_LOCKFILE_KEY = "xyz.manifest.skill.lockfile";
+/** Versions index: CSV of `<label>:<semver>` pairs published as subnames. */
+export const SKILL_VERSIONS_KEY = "xyz.manifest.skill.versions";
+export const SKILL_LATEST_KEY = "xyz.manifest.skill.latest";
 
 export interface SkillBundle {
   $schema?: string;
@@ -174,6 +177,17 @@ export async function resolveSkill(
   ensName: string,
   options: ResolveOptions = {},
 ): Promise<ResolveResult> {
+  // If the name carries a semver range suffix (e.g. "quote.uniswap.eth@^1"),
+  // first resolve it to a concrete versioned subname via the parent's
+  // `xyz.manifest.skill.versions` index. Falls through to direct resolution
+  // when no `@<range>` suffix is present.
+  if (ensName.includes("@")) {
+    ensName = await resolveVersionedName(ensName, {
+      chain: options.chain,
+      rpcUrl: options.rpcUrl,
+    });
+  }
+
   const normalized = normalize(ensName);
 
   // Default to Sepolia for hackathon — mainnet is opt-in.
@@ -558,6 +572,164 @@ export function generateLockfile(
     version: r.version ?? r.bundle.version,
     cid: r.cid,
   }));
+}
+
+// -------------------------------------------------------------------------
+// Versioning — semver matching against the per-name version index
+// -------------------------------------------------------------------------
+//
+// Spec (matches the ENSIP-25 / xyz.manifest.skill.* family):
+//   xyz.manifest.skill.versions  = "v1:1.0.0,v2:2.0.0,v3:2.1.0"   (CSV)
+//   xyz.manifest.skill.latest    = "v3"                            (subname label)
+//
+// Each <label> in the versions index is the subname under the parent that
+// pins that exact version's bundle CID. e.g. for `quote.uniswap.eth`:
+//   v1.quote.uniswap.eth → manifest at version 1.0.0
+//   v2.quote.uniswap.eth → manifest at version 2.0.0
+//
+// `matchVersionRange("^1", index)` returns the highest matching label.
+
+export interface VersionEntry {
+  label: string;   // subname label, e.g. "v1"
+  version: string; // semver, e.g. "1.0.0"
+}
+
+/**
+ * Parse the CSV `xyz.manifest.skill.versions` text record.
+ *
+ * @example
+ *   parseVersionsRecord("v1:1.0.0,v2:2.0.0,v3:2.1.0")
+ *   // → [{label:"v1",version:"1.0.0"}, {label:"v2",version:"2.0.0"}, ...]
+ */
+export function parseVersionsRecord(raw: string): VersionEntry[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const i = pair.indexOf(":");
+      if (i === -1) throw new Error(`malformed versions entry: "${pair}"`);
+      return { label: pair.slice(0, i).trim(), version: pair.slice(i + 1).trim() };
+    });
+}
+
+interface ParsedSemver {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
+function parseSemver(v: string): ParsedSemver {
+  const m = v.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  if (!m) throw new Error(`invalid semver: "${v}"`);
+  return { major: +m[1], minor: +m[2], patch: +m[3] };
+}
+
+function compareSemver(a: ParsedSemver, b: ParsedSemver): number {
+  return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
+}
+
+/**
+ * Test whether a concrete semver `v` satisfies an npm-style range `range`.
+ * Supports: exact ("1.2.3"), caret ("^1.2.3"), tilde ("~1.2.3"),
+ * "latest" / "*" wildcard, and bare-major shorthands like "^1" or "~2".
+ */
+export function semverSatisfies(v: string, range: string): boolean {
+  range = range.trim();
+  if (range === "*" || range === "latest" || range === "") return true;
+
+  const sv = parseSemver(v);
+
+  if (range.startsWith("^")) {
+    // ^x.y.z accepts >=x.y.z, <(x+1).0.0   (or ^x → ^x.0.0)
+    const r = parseSemver(normalizeShorthand(range.slice(1)));
+    return (
+      sv.major === r.major &&
+      compareSemver(sv, r) >= 0
+    );
+  }
+  if (range.startsWith("~")) {
+    // ~x.y.z accepts >=x.y.z, <x.(y+1).0   (or ~x → ~x.0.0)
+    const r = parseSemver(normalizeShorthand(range.slice(1)));
+    return (
+      sv.major === r.major &&
+      sv.minor === r.minor &&
+      compareSemver(sv, r) >= 0
+    );
+  }
+  // Exact match (or "v"-prefixed exact)
+  return compareSemver(sv, parseSemver(normalizeShorthand(range))) === 0;
+}
+
+function normalizeShorthand(v: string): string {
+  // "1" → "1.0.0", "1.2" → "1.2.0", "1.2.3" → "1.2.3", "v1" → "v1.0.0"
+  const stripped = v.startsWith("v") ? v.slice(1) : v;
+  const parts = stripped.split(".");
+  while (parts.length < 3) parts.push("0");
+  return parts.join(".");
+}
+
+/**
+ * Pick the highest version in `index` that satisfies `range`.
+ * Returns null if no entry matches.
+ */
+export function matchVersionRange(
+  range: string,
+  index: VersionEntry[],
+): VersionEntry | null {
+  const matches = index.filter((e) => semverSatisfies(e.version, range));
+  if (matches.length === 0) return null;
+  matches.sort((a, b) => compareSemver(parseSemver(b.version), parseSemver(a.version)));
+  return matches[0];
+}
+
+/**
+ * Resolve a versioned ENS name like `quote.uniswap.eth@^1` into the concrete
+ * subname (`v1.quote.uniswap.eth`). Reads the parent's
+ * `xyz.manifest.skill.versions` text record + matches the range.
+ *
+ * If the name has no `@<range>` suffix, returns the name unchanged.
+ * If the name's parent has no versions index, throws — callers can catch
+ * and fall back to direct resolution.
+ */
+export async function resolveVersionedName(
+  ensNameWithRange: string,
+  options: { chain?: "mainnet" | "sepolia"; rpcUrl?: string } = {},
+): Promise<string> {
+  const i = ensNameWithRange.indexOf("@");
+  if (i === -1) return ensNameWithRange;
+
+  const parent = ensNameWithRange.slice(0, i);
+  const range = ensNameWithRange.slice(i + 1);
+
+  const chain = options.chain ?? "sepolia";
+  const client = createPublicClient({
+    chain: chain === "mainnet" ? mainnet : sepolia,
+    transport: http(options.rpcUrl),
+  }) as PublicClient;
+  const universalResolverAddress: Address | undefined =
+    chain === "sepolia" ? ENS_SEPOLIA.universalResolver : undefined;
+
+  const versionsRaw = await client.getEnsText({
+    name: normalize(parent),
+    key: SKILL_VERSIONS_KEY,
+    universalResolverAddress,
+  });
+  if (!versionsRaw) {
+    throw new Error(
+      `${parent} has no ${SKILL_VERSIONS_KEY} text record — cannot match range "${range}"`,
+    );
+  }
+
+  const index = parseVersionsRecord(versionsRaw);
+  const match = matchVersionRange(range, index);
+  if (!match) {
+    throw new Error(
+      `no version in ${parent} satisfies range "${range}". Available: ${index.map((e) => `${e.label}:${e.version}`).join(", ")}`,
+    );
+  }
+  return `${match.label}.${parent}`;
 }
 
 // -------------------------------------------------------------------------

@@ -18,6 +18,7 @@ import { verify } from "./commands/verify.js";
 import { init } from "./commands/init.js";
 import { registerOnchain } from "./commands/register-onchain.js";
 import { publish } from "./commands/publish.js";
+import { lock } from "./commands/lock.js";
 
 const HELP = `
 skill — ENS-native skill registry CLI
@@ -147,10 +148,11 @@ async function main() {
       break;
 
     case "lock":
-      console.error(
-        "skill lock — not yet implemented. Depends on skill.imports (#3).",
-      );
-      process.exit(1);
+      if (!positional[0]) {
+        console.error("Usage: skill lock <ensName>");
+        process.exit(1);
+      }
+      await lock(positional[0]);
       break;
 
     default:
