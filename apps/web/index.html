@@ -2315,8 +2315,18 @@
   const HELLO_WORLD = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"hello-world","ensName":"hello.world.eth","version":"1.0.0","description":"One function: greet a name. The smallest possible local-execution skill.","license":"MIT","tools":[{"name":"greet","description":"Returns 'Hello, {name}!' Runs locally inside the bridge process.","execution":{"type":"local","handler":"tools/greet.json"}}],"trust":{"ensip25":{"enabled":true},"erc8004":{"registry":"eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4","agentId":6}}};
   const INFER_0G = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"infer-0g","ensName":"infer.skilltest.eth","version":"1.0.0","description":"AI inference via 0G Compute Network. Routes prompts to decentralized GPU providers.","license":"MIT","tools":[{"name":"infer","description":"Run AI inference on 0G Compute Network.","execution":{"type":"0g-compute","providerAddress":"0xa48f01287233509FD694a22Bf840225062E67836","model":"qwen/qwen-2.5-7b-instruct"}}]};
   const AGENT_RESEARCH = {"$schema":"https://manifest.eth/schemas/skill-v1.json","name":"agent-research","ensName":"agent.skilltest.eth","version":"1.0.0","description":"Composite skill: research a token + holder by fanning out to three atomic skills — quote (price), score (Passport reputation), infer (LLM verdict). Demonstrates the import-graph: one ENS name resolves to three transitive tools at the bridge.","license":"MIT","dependencies":["quote.skilltest.eth","score.skilltest.eth","infer.skilltest.eth"],"tools":[{"name":"research_token","description":"Fan out to three imported skills: get the token's USD price via quote.skilltest.eth, the holder's Gitcoin Passport score via score.skilltest.eth, then ask infer.skilltest.eth (0G Compute) for a one-sentence verdict.","execution":{"type":"local","handler":"tools/research_token.json"}}],"trust":{"ensip25":{"enabled":true}}};
+  // Synthetic v2 — same shape as v1, version + description bumped. Mirrors
+  // what scripts/setup-versions.ts pinned to 0G.
+  const QUOTE_UNISWAP_V2 = {
+    ...QUOTE_UNISWAP,
+    ensName: "v2.quote.skilltest.eth",
+    version: "2.0.0",
+    description: "(v2) " + QUOTE_UNISWAP.description,
+  };
   const MANIFEST_CACHE = {
     'quote.skilltest.eth': QUOTE_UNISWAP, 'quote.uniswap.eth': QUOTE_UNISWAP,
+    'v1.quote.skilltest.eth': QUOTE_UNISWAP,
+    'v2.quote.skilltest.eth': QUOTE_UNISWAP_V2,
     'swap.skilltest.eth': SWAP_UNISWAP, 'swap.uniswap.eth': SWAP_UNISWAP,
     'score.skilltest.eth': SCORE_GITCOIN, 'score.gitcoin.eth': SCORE_GITCOIN,
     'weather.skilltest.eth': WEATHER_TOMORROW, 'weather.tomorrow.eth': WEATHER_TOMORROW,
