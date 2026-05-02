@@ -1,0 +1,23 @@
+name = "skillname-analytics"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV namespace for skill aggregations.
+# Create with: wrangler kv:namespace create SKILL_STATS
+# then paste the id below.
+[[kv_namespaces]]
+binding = "SKILL_STATS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Scheduled trigger — every minute scan for new SkillCalled events.
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+# SkillLink registry on Sepolia. Update post-NameWrapper-aware redeploy.
+SKILLLINK_ADDRESS = "0xE2532C1dB5FceFA946Ee64D44c22027c070DE8Aa"
+SEPOLIA_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
+# Block to start scanning from. Set to the deploy block of SkillLink so we
+# don't sweep all of Sepolia history on first run.
+START_BLOCK = "10769398"
