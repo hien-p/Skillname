@@ -65,18 +65,11 @@ jobs:
           ~/go/bin/0g-storage-client --version || ~/go/bin/0g-storage-client version || true
 
       - id: pin
-<<<<<<< Updated upstream
-        name: Pin to 0G
-        env:
-          SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
-          OG_RPC_URL: ${{ vars.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai' }}
-=======
         name: Pin to 0G via Go CLI
         env:
           SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
           OG_RPC_URL: ${{ vars.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai' }}
           OG_INDEXER_URL: ${{ vars.OG_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai' }}
->>>>>>> Stashed changes
         run: |
           if [ -n "${{ inputs.slug }}" ]; then
             pnpm tsx scripts/pin-to-0g.ts "${{ inputs.slug }}"
@@ -91,13 +84,8 @@ jobs:
         run: |
           ROOTS="${{ steps.pin.outputs.roots }}"
           if [ -z "$ROOTS" ]; then
-<<<<<<< Updated upstream
-            echo "::warning::pin step did not produce any 0G roots; skipping register"
-            exit 0
-=======
             echo "::error::pin step produced no 0G roots — check operator balance + faucet"
             exit 1
->>>>>>> Stashed changes
           fi
           pnpm tsx scripts/register-skills.ts \
             --parent "${{ inputs.parent }}" \

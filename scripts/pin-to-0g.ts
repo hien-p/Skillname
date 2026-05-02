@@ -20,7 +20,7 @@ import 'dotenv/config'
  *   pnpm tsx scripts/pin-to-0g.ts quote-uniswap  # single bundle (default in CI)
  */
 
-import { execFileSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -65,30 +65,29 @@ for (const slug of bundleDirs) {
   const manifestPath = join(examplesDir, slug, 'manifest.json')
   process.stdout.write(`[${slug}] `)
 
-  let stdout = ''
-  let stderr = ''
-  try {
-    stdout = execFileSync(
-      CLI,
-      [
-        'upload',
-        '--url', OG_RPC,
-        '--indexer', INDEXER_URL,
-        '--key', PRIVATE_KEY,
-        '--file', manifestPath,
-      ],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
-    )
-  } catch (e: any) {
-    stdout = e.stdout?.toString() ?? ''
-    stderr = e.stderr?.toString() ?? ''
-    console.error(`✗ CLI exit ${e.status}`)
+  // logrus writes to stderr by default. execFileSync only returns stdout, so
+  // the root line was getting silently dropped on success — use spawnSync
+  // and merge both streams unconditionally.
+  const result = spawnSync(
+    CLI,
+    [
+      'upload',
+      '--url', OG_RPC,
+      '--indexer', INDEXER_URL,
+      '--key', PRIVATE_KEY,
+      '--file', manifestPath,
+    ],
+    { encoding: 'utf8' }
+  )
+  const stdout = result.stdout ?? ''
+  const stderr = result.stderr ?? ''
+  if (result.error || result.status !== 0) {
+    console.error(`✗ CLI exit ${result.status ?? '?'}${result.error ? ` (${result.error.message})` : ''}`)
     if (stderr) console.error(stderr.split('\n').map((l: string) => '    ' + l).join('\n'))
     if (stdout) console.error(stdout.split('\n').map((l: string) => '    ' + l).join('\n'))
     continue
   }
 
-  // logrus writes to stderr by default; merge both streams when scanning.
   const combined = stdout + '\n' + stderr
   const m = combined.match(ROOT_LINE_RX)
   if (!m) {
