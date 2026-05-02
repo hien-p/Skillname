@@ -1,55 +1,85 @@
 # ENSIP-25 binding workflow
 
-This is the step-by-step for turning a reference skill bundle from "trust: unverified" into "✓ verified" per [ENSIP-25](https://docs.ens.domains/ensip/25). Tracks [issue #56](https://github.com/hien-p/Skillname/issues/56).
+Step-by-step for turning a reference skill bundle from "trust: unverified" into "✓ verified" per [ENSIP-25](https://docs.ens.domains/ensip/25). Tracks [issue #56](https://github.com/hien-p/Skillname/issues/56).
 
-## What ENSIP-25 actually requires
+---
 
-Three things have to be true at the same time:
+## What ENSIP-25 actually says
 
-1. The bundle's `manifest.json` declares
-   ```json
-   "trust": {
-     "ensip25": { "enabled": true },
-     "erc8004": {
-       "registry": "eip155:<chainId>:<contractAddr>",
-       "agentId": <id>
-     }
-   }
-   ```
-2. The ENS name has the text record `agent-registration[<erc7930>][<agentId>] = "1"` (or any non-empty, non-`"0"` value)
-3. The agentId on the ERC-8004 registry resolves back to that ENS name (NFT side of the binding)
+After re-reading [the spec](https://docs.ens.domains/ensip/25), the binding model is **simpler than originally documented in this file**. Two canonical facts that change how we should think about this:
 
-The SDK only runs `verifyEnsip25()` when (1) is present. Conditions (2) and (3) are checked at resolution time.
+### 1. The text record key
 
-## The unresolved upstream question — which ERC-8004 registry on Sepolia?
+```
+agent-registration[<registry>][<agentId>]
+```
 
-There is no canonical ERC-8004 IdentityRegistry deployed on Sepolia at a well-known address as of this writing. Three options, ranked from cheapest to most flexible:
+- `<registry>` is the registry's address encoded as an [**ERC-7930 interoperable address**](https://eips.ethereum.org/EIPS/eip-7930) (hex string with `0x` prefix)
+- `<agentId>` is **a string**, not necessarily an integer — the spec only forbids `[` and `]` in the value
 
-| Option | Cost | Notes |
-|---|---|---|
-| **Reuse a published reference** | None — just point at it | Search `etherscan.io/address` for "ERC-8004" or "IdentityRegistry" deployments by the spec authors. If one exists, use that — judges already trust it. |
-| **Deploy our own from the spec reference** | ~1h | Clone the [ERC-8004 reference repo](https://github.com/erc-8004/contracts), `forge create` against `SEPOLIA_PRIVATE_KEY`, mint an agentId per skill. Adds another contract surface to defend at submission. |
-| **Use a placeholder registry + document the gap** | Trivial | Lowest fidelity — judges checking the Etherscan link will see an unrelated contract. Don't ship this in a final submission. |
+The reference implementation in `@skillname/sdk` (`encodeErc7930()` and `verifyEnsip25()`) is now spec-compliant after the fix in this PR (see "Bug fix" below).
 
-**Recommendation**: ask an ENS mentor at the next office hours if there's an existing Sepolia deployment they bless. If yes → option 1. If no → option 2, and budget half a day for it.
+### 2. Verification is one-directional
 
-## Once you know the registry — the bind flow per skill
+The spec states:
+> "If the resolved value is non-empty, the ENS name is considered verified for that specific agent registry entry."
+
+**There is no requirement that the registry side reverse-binds back to the ENS name.** Verification depends on three things only:
+1. The bundle declares `trust.erc8004 = { registry, agentId }`
+2. The text record `agent-registration[<erc7930>][<agentId>]` exists with a non-empty value
+3. (Optional, recommended) The value is `"1"`
+
+**Earlier versions of this doc claimed step 3 required NFT-side reverse binding. That was wrong** — re-read the spec, it's not there. ENS transfers can stale the verification, but enforcement is by convention, not on-chain.
+
+This simplifies #56 dramatically: we don't need an ERC-8004 NFT mint for the spec to call this "bound". We need a registry address (which can be a pointer or even a no-op contract) and the ENS text record set.
+
+---
+
+## Bug fix in this PR — `encodeErc7930` chain_type
+
+The previous SDK implementation used `chain_type = 0x0001` for EVM chains. **The correct value per ERC-7930 is `0x0000`** (CASA namespace id for EIP-155). Cross-checked against the ENSIP-25 spec example for mainnet ERC-8004:
+
+| Source | Hex |
+|---|---|
+| Spec example (mainnet, registry `0x8004A169…`, agentId 167) | `0x000100000101148004a169fb4a3325136eb29fa0ceb6d2e539a432` |
+| Old SDK output | `0x000100010101148004a169fb4a3325136eb29fa0ceb6d2e539a432` |
+| Fixed SDK output | `0x000100000101148004a169fb4a3325136eb29fa0ceb6d2e539a432` ✓ |
+
+Worked example for Sepolia (chainId 11155111 = `0xaa36a7`):
+
+```
+0x 0001 0000 03 aa36a7 14 <20-byte address>
+   ────  ────  ──  ──────  ──  ─────────────
+   v=1   EVM   3   chRef   20  addr
+```
+
+> **Open spec question** — the EIP-7930 reference page shows Sepolia padded to 4 bytes (`04 00aa36a7`) while the canonical minimum-bytes encoding produces 3 bytes (`03 aa36a7`). My implementation chose canonical-minimum since the ENSIP-25 mainnet example clearly uses the same pattern (1 byte for chainId 1, not 4-byte `00000001`). If a future verifier disagrees, the fix is one line in `encodeErc7930()` — pad up to 4 bytes for chainId > 0xFF.
+
+---
+
+## What we need to do
 
 For each of the 5 reference subnames (`hello`, `quote`, `swap`, `score`, `weather` under `*.skilltest.eth`):
 
-### 1. Mint the Identity NFT
+### 1. Pick a registry address
 
-Call the ERC-8004 registry's `mint` (or equivalent) function with the wallet that owns the ENS name. Record the returned `agentId`.
+Per the spec, the registry can be any EVM address — typically an ERC-8004 IdentityRegistry, but spec-wise nothing enforces that. Three options ranked from cheapest:
 
-### 2. Update the bundle manifest
+| Option | Effort | Trade-off |
+|---|---|---|
+| **Use the ENSIP-25 reference example address** (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` on mainnet) | None | Demos the binding format; doesn't actually point at a Sepolia registry. Defensible because spec says verification is just "text record present" — no NFT reverse-check |
+| **Deploy a stub registry on Sepolia** | ~30min | Anyone hitting the registry sees a real contract. Even a no-op contract works for spec compliance. |
+| **Find/deploy a real ERC-8004 IdentityRegistry on Sepolia** | ~1h | Maximum fidelity; harder to defend at submission if judges question what the registry does |
 
-Edit `skillname-pack/examples/<bundle>/manifest.json`:
+**Recommendation**: option 2 — write a 50-line `IdentityRegistry.sol` that exposes `register(name, owner)` and a `nameOf(uint256)` getter. Lives at a Sepolia address, comments cite ENSIP-25. That gives us a real contract people can poke at without the full ERC-8004 surface area.
+
+### 2. Update each bundle's `manifest.json`
 
 ```json
 "trust": {
   "ensip25": { "enabled": true },
   "erc8004": {
-    "registry": "eip155:11155111:0xYourErc8004RegistryOnSepolia",
+    "registry": "eip155:11155111:0xYourSepoliaRegistry",
     "agentId": 42
   }
 }
@@ -61,19 +91,19 @@ Edit `skillname-pack/examples/<bundle>/manifest.json`:
 pnpm tsx scripts/bind-ensip25.ts \
   quote.skilltest.eth \
   42 \
-  eip155:11155111:0xYourErc8004RegistryOnSepolia
+  eip155:11155111:0xYourSepoliaRegistry
 ```
 
 The script:
 - Computes `namehash(ensName)`
-- Encodes the registry as ERC-7930 via `@skillname/sdk`'s `encodeErc7930()`
+- Encodes the registry as ERC-7930 via `@skillname/sdk`'s `encodeErc7930()` (now spec-compliant)
 - Builds the key `agent-registration[<erc7930>][<agentId>]`
-- Calls `PublicResolver.setText(node, key, "1")` on Sepolia
-- Reads the value back to confirm
+- Calls `PublicResolver.setText(node, key, "1")` on Sepolia (resolver `0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5` per the SDK's `ENS_SEPOLIA` map)
+- Reads back to confirm
 
-### 4. Re-pin the bundle and update the CID
+### 4. Re-pin the bundle
 
-Manifest changed → CID changed → ENS text record `xyz.manifest.skill` needs to point at the new CID. Use the existing `pin-to-0g.ts` + `pin-to-storacha.ts` scripts.
+Manifest changed → CID changed → ENS text record `xyz.manifest.skill` needs the new CID. Use the existing `pin-to-0g.ts` + `pin-to-storacha.ts` scripts.
 
 ### 5. Verify
 
@@ -83,26 +113,31 @@ pnpm cli skill resolve quote.skilltest.eth
 
 Look for `ensip25.bound: true` and the matching `agentId` in the output.
 
-## Doing all 5 in one pass
+---
 
-After the registry decision is made and one bundle is verified end-to-end, batch the rest:
+## Doing all 5 in one pass
 
 ```bash
 for ens in hello.skilltest.eth quote.skilltest.eth swap.skilltest.eth score.skilltest.eth weather.skilltest.eth; do
   agentId=$(yq -r ".\"$ens\".agentId" agents.yaml)  # however you track the per-skill agentId
-  pnpm tsx scripts/bind-ensip25.ts "$ens" "$agentId" eip155:11155111:0xYourErc8004Registry
+  pnpm tsx scripts/bind-ensip25.ts "$ens" "$agentId" eip155:11155111:0xYourSepoliaRegistry
 done
 ```
 
 Update each manifest's `trust.erc8004` accordingly, re-pin them as a batch, push the new CIDs to ENS via the existing `xyz.manifest.skill` setter.
 
+---
+
 ## Why this matters for the prize tracks
 
-- **Best ENS Integration for AI Agents**: every demo skill walks in with a verifiable identity that's not just "ENS resolves to a CID". Judges want ENS doing real work — bidirectional NFT↔ENS binding is the textbook example.
-- **Most Creative Use of ENS**: the verification key uses an ENS *text record key derived from a packed CAIP-10 / ERC-7930 address* — that's exactly the "what else can ENS do" pattern (verifiable credentials in text records) the criteria call out.
+- **Best ENS Integration for AI Agents**: every demo skill walks in with a verifiable identity stored as a structured text record — not just "ENS resolves to a CID". The verification key is computed on the fly from the `(registry, agentId)` pair, so it's truly dynamic identity.
+- **Most Creative Use of ENS**: ERC-7930-encoded interoperable address packed into an ENS text record key. This is exactly the "what else can ENS do?" the criteria call out. Worth a paragraph in the README pointing the judges at `encodeErc7930()` in `packages/sdk/src/index.ts:380`.
 
-## Limitations of the current scaffold
+---
 
-- Only handles the ENS side of the binding. The NFT mint + reverse pointer is left as a manual step until we pick a registry.
-- Updates one skill at a time. The batch pattern above is a shell loop, not a CLI verb (yet).
-- No idempotency check — re-running will issue a redundant `setText` if the value's already correct. Cheap on Sepolia but worth fixing if we ever do this in CI.
+## Open items
+
+- **The ChainReference encoding question above** — pick a side after spec authors clarify, fix in 1 line if needed
+- **Pick the registry contract** — option 2 (stub on Sepolia) is the recommended path
+- **Batch automation** — current `bind-ensip25.ts` does one skill at a time. The shell loop above is the workaround
+- **No idempotency check** — re-running issues a redundant `setText` even if the value's already correct. Cheap on Sepolia, worth fixing if we ever do this in CI
