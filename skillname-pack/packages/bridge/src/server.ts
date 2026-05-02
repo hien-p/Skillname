@@ -616,7 +616,7 @@ function bigintSafeReplacer(_k: string, v: unknown) {
 const SKILLLINK_BY_CHAIN: Record<number, `0x${string}`> = {
   // Sepolia: see contracts/script/Deploy.s.sol output. Update after redeploy
   // with the NameWrapper-aware version.
-  11155111: "0xE2532C1dB5FceFA946Ee64D44c22027c070DE8Aa",
+  11155111: "0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5",
 };
 
 const SKILLLINK_CALL_ABI = [
