@@ -8,7 +8,7 @@ This is the on-chain mirror of the off-chain MCP composition path: the bridge al
 
 | Network | Address | Explorer |
 |---|---|---|
-| Sepolia (testnet) | `0xE2532C1dB5FceFA946Ee64D44c22027c070DE8Aa` | [Etherscan](https://sepolia.etherscan.io/address/0xE2532C1dB5FceFA946Ee64D44c22027c070DE8Aa) |
+| Sepolia (testnet) | `0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5` | [Etherscan](https://sepolia.etherscan.io/address/0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5) |
 
 The contract uses two ENS-side constants:
 
@@ -64,26 +64,29 @@ require(msg.sender == ensOwner, "not the ENS owner");
 
 If you're porting to mainnet, swap the NameWrapper constant — it's `0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401` on mainnet vs `0x0635513f179D50A207757E05759CbD106d7dFcE8` on Sepolia.
 
-## Composition demo
+## Composition demo — live on Sepolia
 
-The `contracts/src/examples/` directory ships three reference contracts that exercise the registry end-to-end:
+The `contracts/src/examples/` directory ships three reference contracts that exercise the registry end-to-end. **All three are deployed and registered as of 2026-05-02** (block 10772628):
 
-| Contract | ENS name | Role |
-|---|---|---|
-| `QuoteUniswap` | `quote.uniswap.skilltest.eth` | Mock price oracle, returns `2300e6` for `"ethereum"` |
-| `QuoteSushi` | `quote.sushi.skilltest.eth` | Same shape, returns `2295e6` for `"ethereum"` |
-| `BestQuoteAggregator` | `quote.aggregate.skilltest.eth` | Calls both via `registry.call()`, returns the higher quote |
+| Contract | ENS name | Address | Role |
+|---|---|---|---|
+| `QuoteUniswap` | `uni.skilltest.eth` | [`0x764a5623…`](https://sepolia.etherscan.io/address/0x764a562320112A5017107FC007a04100ec25Cd42) | Mock price oracle, returns `2300e6` for `"ethereum"` |
+| `QuoteSushi` | `sushi.skilltest.eth` | [`0xca716a62…`](https://sepolia.etherscan.io/address/0xca716a62ed267CB9538db57804e243dd4FBd5545) | Same shape, returns `2295e6` for `"ethereum"` |
+| `BestQuoteAggregator` | `agg.skilltest.eth` | [`0x9Eb87069…`](https://sepolia.etherscan.io/address/0x9Eb870696bcd321A88Dba40eAaC92Ac00fA472f2) | Calls both via `registry.call()`, returns the higher quote |
 
-`BestQuoteAggregator` is itself a registered skill. A third party can call:
+`BestQuoteAggregator` is itself a registered skill. **Anyone with a Sepolia RPC can run this — no key required:**
 
 ```bash
-cast call $SKILLLINK_ADDRESS "call(bytes32,bytes)(bytes)" \
-  $(node="quote.aggregate.skilltest.eth" cast namehash $node) \
+cast call 0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5 \
+  "call(bytes32,bytes)(bytes)" \
+  $(cast namehash agg.skilltest.eth) \
   $(cast calldata "getBestQuote(string)" "ethereum") \
-  --rpc-url $SEPOLIA_RPC_URL
+  --rpc-url https://ethereum-sepolia-rpc.publicnode.com
 ```
 
-…and the registry dispatches to `BestQuoteAggregator`, which itself dispatches to `QuoteUniswap` and `QuoteSushi` through the registry, which records `SkillCalled` events for each hop. **One external call, three on-chain skill invocations, zero hardcoded addresses below the entry point.**
+Returns `0x…89173700` = **`2300000000`** (= $2300.000000, 6 decimals).
+
+The registry dispatches to `BestQuoteAggregator`, which itself dispatches to `QuoteUniswap` and `QuoteSushi` through the registry, which records `SkillCalled` events for each hop. **One external call, three on-chain skill invocations, zero hardcoded addresses below the entry point.**
 
 ## Deploying the demo
 
