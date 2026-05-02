@@ -5,30 +5,36 @@
  * CLI for the skillname ENS skill registry.
  *
  * Usage:
- *   skill resolve <ensName> [--chain mainnet|sepolia] [--json]
- *   skill verify  <ensName> [--chain mainnet|sepolia]
- *   skill init    <name>
- *   skill publish <dir> <ensName>
- *   skill lock    <ensName>
+ *   skill resolve          <ensName> [--chain mainnet|sepolia] [--json]
+ *   skill verify           <ensName> [--chain mainnet|sepolia]
+ *   skill init             <name>
+ *   skill register-onchain <ensName> --impl 0x… --selectors 0xa9059cbb,0x70a08231
+ *   skill publish          <dir> <ensName>
+ *   skill lock             <ensName>
  */
 
 import { resolve } from "./commands/resolve.js";
 import { verify } from "./commands/verify.js";
 import { init } from "./commands/init.js";
+import { registerOnchain } from "./commands/register-onchain.js";
 
 const HELP = `
 skill — ENS-native skill registry CLI
 
 Commands:
-  resolve <ensName>   Resolve an ENS name to its skill bundle
-  verify  <ensName>   Validate schema + ENSIP-25 trust for a skill
-  init    <name>      Scaffold a new skill bundle directory
-  publish <dir> <ens> Publish a bundle to IPFS + set ENS text records
-  lock    <ensName>   Generate a lockfile from skill imports
+  resolve          <ensName>   Resolve an ENS name to its skill bundle
+  verify           <ensName>   Validate schema + ENSIP-25 trust for a skill
+  init             <name>      Scaffold a new skill bundle directory
+  register-onchain <ensName>   Register a deployed impl in the SkillLink registry
+  publish          <dir> <ens> Publish a bundle to IPFS + set ENS text records
+  lock             <ensName>   Generate a lockfile from skill imports
 
 Options:
   --chain <chain>     Chain to resolve on (mainnet | sepolia, default: sepolia)
   --json              Output raw JSON instead of formatted text
+  --impl <addr>       Implementation contract address (register-onchain)
+  --selectors <list>  Comma-separated 4-byte hex selectors (register-onchain)
+  --registry <addr>   Override SkillLink registry address (register-onchain)
   --help, -h          Show this help
 
 Examples:
@@ -36,6 +42,8 @@ Examples:
   skill resolve quote.uniswap.eth --chain mainnet --json
   skill verify swap.uniswap.eth
   skill init my-skill
+  skill register-onchain quote.uniswap.skilltest.eth \\
+    --impl 0x1234… --selectors 0xa9059cbb
 `.trim();
 
 function parseArgs(argv: string[]) {
@@ -52,6 +60,12 @@ function parseArgs(argv: string[]) {
       flags.json = true;
     } else if (arg === "--chain" && i + 1 < args.length) {
       flags.chain = args[++i];
+    } else if (arg === "--impl" && i + 1 < args.length) {
+      flags.impl = args[++i];
+    } else if (arg === "--selectors" && i + 1 < args.length) {
+      flags.selectors = args[++i];
+    } else if (arg === "--registry" && i + 1 < args.length) {
+      flags.registry = args[++i];
     } else if (arg.startsWith("--")) {
       // Unknown flag — skip
       console.error(`Unknown flag: ${arg}`);
@@ -103,6 +117,23 @@ async function main() {
         process.exit(1);
       }
       await init(positional[0]);
+      break;
+
+    case "register-onchain":
+      if (!positional[0] || !flags.impl || !flags.selectors) {
+        console.error(
+          "Usage: skill register-onchain <ensName> --impl 0x… --selectors 0xa9059cbb[,0x…]",
+        );
+        process.exit(1);
+      }
+      await registerOnchain(positional[0], {
+        impl: String(flags.impl),
+        selectors: String(flags.selectors)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        registry: flags.registry ? String(flags.registry) : undefined,
+      });
       break;
 
     case "publish":

@@ -85,6 +85,18 @@ export type Execution =
       abi: readonly unknown[];
       method: string;
       mode?: "read" | "write";
+      /**
+       * If true, dispatch through SkillLink.call(namehash(address), calldata)
+       * instead of calling the impl directly. Requires `address` to be an ENS
+       * name registered in the registry. Adds the on-chain selector allowlist
+       * + SkillCalled analytics event to off-chain MCP calls.
+       */
+      useRegistry?: boolean;
+      /**
+       * Optional override for the SkillLink registry address. Falls back to
+       * the bridge's canonical deployment per chainId when omitted.
+       */
+      registry?: string;
       payment?: Payment;
     };
 
