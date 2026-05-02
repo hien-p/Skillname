@@ -17,22 +17,32 @@
           "ids": {
             "type": "string",
             "description": "Comma-separated CoinGecko coin ids",
-            "examples": ["ethereum", "ethereum,usd-coin,wrapped-bitcoin"]
+            "examples": [
+              "ethereum",
+              "ethereum,usd-coin,wrapped-bitcoin"
+            ]
           },
           "vs_currencies": {
             "type": "string",
             "description": "Comma-separated target currencies",
             "default": "usd",
-            "examples": ["usd", "usd,eur"]
+            "examples": [
+              "usd",
+              "usd,eur"
+            ]
           }
         },
-        "required": ["ids"]
+        "required": [
+          "ids"
+        ]
       },
       "outputSchema": {
         "type": "object",
         "additionalProperties": {
           "type": "object",
-          "additionalProperties": { "type": "number" }
+          "additionalProperties": {
+            "type": "number"
+          }
         }
       },
       "execution": {
@@ -43,6 +53,12 @@
     }
   ],
   "trust": {
-    "ensip25": { "enabled": false }
+    "ensip25": {
+      "enabled": true
+    },
+    "erc8004": {
+      "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
+      "agentId": 7
+    }
   }
 }

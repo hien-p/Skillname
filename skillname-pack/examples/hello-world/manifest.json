@@ -3,7 +3,7 @@
   "name": "hello-world",
   "ensName": "hello.world.eth",
   "version": "1.0.0",
-  "description": "One function: greet a name. The smallest possible local-execution skill — useful as a smoke test for the bridge's local handler path.",
+  "description": "One function: greet a name. The smallest possible local-execution skill \u2014 useful as a smoke test for the bridge's local handler path.",
   "author": "0x0000000000000000000000000000000000000000",
   "createdAt": "2026-04-28T00:00:00Z",
   "license": "MIT",
@@ -21,14 +21,20 @@
             "description": "Person or thing to greet"
           }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "greeting": { "type": "string" }
+          "greeting": {
+            "type": "string"
+          }
         },
-        "required": ["greeting"]
+        "required": [
+          "greeting"
+        ]
       },
       "execution": {
         "type": "local",
@@ -37,6 +43,12 @@
     }
   ],
   "trust": {
-    "ensip25": { "enabled": false }
+    "ensip25": {
+      "enabled": true
+    },
+    "erc8004": {
+      "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
+      "agentId": 6
+    }
   }
 }
