@@ -1,0 +1,21 @@
+{
+  "name": "@skillname/analytics",
+  "version": "0.0.1",
+  "description": "Cloudflare Worker that indexes SkillCalled events from the SkillLink registry into KV.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "viem": "^2.21.55"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^3.78.0"
+  }
+}

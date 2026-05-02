@@ -379,28 +379,45 @@ export async function verifyEnsip25(
 }
 
 /**
- * Encode CAIP-10-style address (eip155:1:0x...) as ERC-7930 interoperable address.
+ * Encode CAIP-10-style address (eip155:<chainId>:0x...) as ERC-7930
+ * interoperable address.
  *
- * Format: 0x [version 2 bytes] [chain_type 2 bytes] [chain_id_len 1 byte]
- *           [chain_id N bytes] [addr_len 1 byte] [addr 20 bytes]
+ * Per EIP-7930:
+ *   version            : 2 bytes  — 0x0001 for v1
+ *   chain_type         : 2 bytes  — 0x0000 for EVM chains (CASA namespace id)
+ *   chain_ref_length   : 1 byte
+ *   chain_reference    : N bytes  — chainId as canonical big-endian (no leading-zero pad)
+ *   address_length     : 1 byte
+ *   address            : 20 bytes for EVM
  *
- * Example for Ethereum mainnet (chainId=1) ERC-8004 IdentityRegistry:
- *   0x0001 0001 01 14 8004a169fb4a3325136eb29fa0ceb6d2e539a432
- *      ^^^^ ^^^^ ^^ ^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- *      ver  type len 20 address
+ * Worked example — ENSIP-25 spec reference (Ethereum mainnet, ERC-8004 at
+ * 0x8004A169…, agentId 167):
+ *   0x0001 0000 01 01 14 8004a169fb4a3325136eb29fa0ceb6d2e539a432
+ *      ^^^^ ^^^^ ^^ ^^ ^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ *      ver  evm  cref-len/ref addr-len address
+ *   = 0x000100000101148004a169fb4a3325136eb29fa0ceb6d2e539a432
+ *
+ * Sepolia (chainId 11155111 = 0xaa36a7, 3 canonical bytes):
+ *   0x0001 0000 03 aa36a7 14 <addr>
  */
 export function encodeErc7930(caip10: string): string {
   const match = caip10.match(/^eip155:(\d+):(0x[a-fA-F0-9]{40})$/);
   if (!match) throw new Error(`Invalid CAIP-10: ${caip10}`);
   const [, chainIdStr, addr] = match;
   const chainId = parseInt(chainIdStr, 10);
+  if (chainId < 1) throw new Error(`Invalid chainId: ${chainId}`);
 
-  const chainIdHex = chainId.toString(16).padStart(2, "0");
-  const chainIdLen = (chainIdHex.length / 2).toString(16).padStart(2, "0");
+  // Canonical big-endian minimum bytes — pad to even hex digits, no extra
+  // leading zero on the byte boundary.
+  let chainIdHex = chainId.toString(16);
+  if (chainIdHex.length % 2 === 1) chainIdHex = "0" + chainIdHex;
+  const chainIdBytes = chainIdHex.length / 2;
+  const chainIdLenHex = chainIdBytes.toString(16).padStart(2, "0");
+
   const addrClean = addr.toLowerCase().replace("0x", "");
 
-  // version=0001, chain_type=0001 (eip155), chain_id_len, chain_id, addr_len=14, addr
-  return `0x0001${"0001"}${chainIdLen}${chainIdHex}14${addrClean}`;
+  // 0x0001 (version) | 0x0000 (chain_type=EVM) | <len> | <chainId> | 0x14 | <addr>
+  return `0x0001${"0000"}${chainIdLenHex}${chainIdHex}14${addrClean}`;
 }
 
 // -------------------------------------------------------------------------
