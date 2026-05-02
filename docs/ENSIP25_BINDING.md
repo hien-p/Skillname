@@ -61,17 +61,29 @@ Worked example for Sepolia (chainId 11155111 = `0xaa36a7`):
 
 For each of the 5 reference subnames (`hello`, `quote`, `swap`, `score`, `weather` under `*.skilltest.eth`):
 
-### 1. Pick a registry address
+### 1. Use the deployed `IdentityRegistry` on Sepolia
 
-Per the spec, the registry can be any EVM address — typically an ERC-8004 IdentityRegistry, but spec-wise nothing enforces that. Three options ranked from cheapest:
+The registry is **live** at:
 
-| Option | Effort | Trade-off |
+| Network | Address | Explorer |
 |---|---|---|
-| **Use the ENSIP-25 reference example address** (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` on mainnet) | None | Demos the binding format; doesn't actually point at a Sepolia registry. Defensible because spec says verification is just "text record present" — no NFT reverse-check |
-| **Deploy a stub registry on Sepolia** | ~30min | Anyone hitting the registry sees a real contract. Even a no-op contract works for spec compliance. |
-| **Find/deploy a real ERC-8004 IdentityRegistry on Sepolia** | ~1h | Maximum fidelity; harder to defend at submission if judges question what the registry does |
+| Sepolia | `0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4` | [Etherscan](https://sepolia.etherscan.io/address/0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4) |
 
-**Recommendation**: option 2 — write a 50-line `IdentityRegistry.sol` that exposes `register(name, owner)` and a `nameOf(uint256)` getter. Lives at a Sepolia address, comments cite ENSIP-25. That gives us a real contract people can poke at without the full ERC-8004 surface area.
+Source at `contracts/src/IdentityRegistry.sol` — minimal: `register(string name) → uint256 agentId`, ownership transfer, name + owner getters. Spec compliance for ENSIP-25 verification is satisfied just by having the contract address used in the ERC-7930 encoded text-record key — the spec doesn't require any specific registry behavior beyond that.
+
+The CAIP-10 string to use in `manifest.json`:
+
+```
+eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4
+```
+
+Worked example — for `agentId 1`, the ENSIP-25 text-record key is:
+
+```
+agent-registration[0x0001000003aa36a71448f77ffe1f02fb94bde9c8ffe84bb4956ace11e4][1]
+```
+
+Computed via `@skillname/sdk`'s `encodeErc7930()` + the standard ENSIP-25 template. The 3-byte chain reference `aa36a7` is Sepolia (chainId 11155111) in canonical big-endian.
 
 ### 2. Update each bundle's `manifest.json`
 
