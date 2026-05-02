@@ -12,6 +12,12 @@ interface IENS {
     function owner(bytes32 node) external view returns (address);
 }
 
+/// @notice ENS NameWrapper. Wrapped names report their `ENS_REGISTRY.owner()` as
+///         the NameWrapper contract; the real owner is read from `ownerOf(uint256(node))`.
+interface INameWrapper {
+    function ownerOf(uint256 id) external view returns (address);
+}
+
 contract SkillLink {
     // ── Types ────────────────────────────────────────────────────────────
 
@@ -25,8 +31,13 @@ contract SkillLink {
 
     // ── State ────────────────────────────────────────────────────────────
 
-    /// @notice ENS Registry on Sepolia (same address on all EVM chains)
+    /// @notice ENS Registry — same address on every Ethereum chain (mainnet, Sepolia, Holesky).
     IENS public constant ENS_REGISTRY = IENS(0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e);
+
+    /// @notice ENS NameWrapper on Sepolia. Mainnet uses
+    ///         `0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401` — redeploy with that
+    ///         constant when porting to mainnet.
+    INameWrapper public constant NAME_WRAPPER = INameWrapper(0x0635513f179D50A207757E05759CbD106d7dFcE8);
 
     /// @notice namehash → registered skill
     mapping(bytes32 => Skill) public skills;
@@ -73,8 +84,13 @@ contract SkillLink {
     ) external {
         if (selectors_.length == 0) revert NoSelectors();
 
-        // Verify caller owns the ENS name
+        // Verify caller owns the ENS name. For wrapped names, `ENS_REGISTRY.owner(node)`
+        // returns the NameWrapper contract address rather than the actual owner — fall
+        // through to `NameWrapper.ownerOf(uint256(node))` to get the real owner.
         address ensOwner = ENS_REGISTRY.owner(node);
+        if (ensOwner == address(NAME_WRAPPER)) {
+            ensOwner = NAME_WRAPPER.ownerOf(uint256(node));
+        }
         if (msg.sender != ensOwner) {
             revert NotENSOwner(node, msg.sender, ensOwner);
         }

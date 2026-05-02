@@ -239,4 +239,67 @@ contract SkillLinkTest is Test {
         assertTrue(registry.isSelectorAllowed(quoteNode, getQuoteSel));
         assertFalse(registry.isSelectorAllowed(quoteNode, forbiddenSel));
     }
+
+    // ── NameWrapper-wrapped name tests ───────────────────────────────────
+    //
+    // Wrapped names report `ENS_REGISTRY.owner(node)` as the NameWrapper
+    // contract address. The real owner lives on `NameWrapper.ownerOf(uint256(node))`.
+    // SkillLink falls through to NameWrapper in that case — these tests verify it.
+
+    function test_register_wrappedName_success() public {
+        // Etch a mock NameWrapper at the canonical Sepolia address and set
+        // it as the ENS owner of `quoteNode`.
+        address wrapperAddr = 0x0635513f179D50A207757E05759CbD106d7dFcE8;
+        vm.etch(wrapperAddr, address(new MockNameWrapper()).code);
+        MockNameWrapper(wrapperAddr).setOwner(uint256(quoteNode), owner);
+
+        // ENS Registry now reports NameWrapper as the owner of quoteNode.
+        vm.store(
+            address(0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e),
+            keccak256(abi.encode(quoteNode, uint256(0))),
+            bytes32(uint256(uint160(wrapperAddr)))
+        );
+
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = getQuoteSel;
+
+        vm.prank(owner);
+        registry.register(quoteNode, address(quoteSkill), sels);
+
+        (address impl, address skillOwner,,) = registry.skills(quoteNode);
+        assertEq(impl, address(quoteSkill));
+        assertEq(skillOwner, owner);
+    }
+
+    function test_register_wrappedName_notWrappedOwner_reverts() public {
+        address wrapperAddr = 0x0635513f179D50A207757E05759CbD106d7dFcE8;
+        vm.etch(wrapperAddr, address(new MockNameWrapper()).code);
+        // Wrap-owner is `owner`, but the attacker is calling.
+        MockNameWrapper(wrapperAddr).setOwner(uint256(quoteNode), owner);
+        vm.store(
+            address(0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e),
+            keccak256(abi.encode(quoteNode, uint256(0))),
+            bytes32(uint256(uint160(wrapperAddr)))
+        );
+
+        bytes4[] memory sels = new bytes4[](1);
+        sels[0] = getQuoteSel;
+
+        vm.prank(attacker);
+        vm.expectRevert();
+        registry.register(quoteNode, address(quoteSkill), sels);
+    }
+}
+
+/// @dev Mock ENS NameWrapper for the wrapped-name test path
+contract MockNameWrapper {
+    mapping(uint256 => address) public _owner;
+
+    function setOwner(uint256 id, address o) external {
+        _owner[id] = o;
+    }
+
+    function ownerOf(uint256 id) external view returns (address) {
+        return _owner[id];
+    }
 }
