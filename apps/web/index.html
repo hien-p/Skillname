@@ -1869,6 +1869,23 @@
         </div>
       </article>
 
+      <article class="card metric" data-card="onchain" id="onchainCard">
+        <div class="hover-flag">ON-CHAIN · LIVE</div>
+        <div>
+          <div class="label">SKILLLINK · sepolia</div>
+          <div class="metric-value" style="margin-top:6px;font-size:42px" id="onchainCount">—</div>
+          <div class="label" style="margin-top:2px">SKILLS REGISTERED</div>
+        </div>
+        <div class="metric-foot" style="flex-direction:column;align-items:stretch;gap:8px">
+          <button id="onchainRun" type="button" style="background:var(--text-display);color:var(--black);border:none;padding:10px 14px;font-family:inherit;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border-radius:0">
+            RUN DEMO →
+          </button>
+          <div id="onchainResult" class="label" style="font-size:11px;line-height:1.4;color:var(--text-secondary);min-height:16px">
+            agg.skilltest.eth → getBestQuote("ethereum")
+          </div>
+        </div>
+      </article>
+
       <article class="card metric" data-card="schemaversion">
         <div class="hover-flag">SCHEMA · v1</div>
         <div>
@@ -2626,6 +2643,71 @@
   });
   // On cold load, restore detail view if URL carries the route.
   if (location.hash.startsWith('#/skill/')) syncDetailFromHash();
+
+  // ── SkillLink on-chain demo ─────────────────────────────────────────────
+  // Live deployment on Sepolia. Reads skillCount() on load, runs the
+  // composition demo (agg.skilltest.eth → BestQuoteAggregator → uni + sushi)
+  // when the user clicks RUN DEMO.
+  const SKILLLINK_ADDR = '0x428865D8Dec9Bcc882c9e034DB4c81CBd93293A5';
+  const SKILLLINK_ABI = parseAbi([
+    'function skillCount() external view returns (uint256)',
+    'function call(bytes32 node, bytes data) external payable returns (bytes)',
+  ]);
+  const sepoliaPublic = createPublicClient({ chain: sepolia, transport: http() });
+
+  async function refreshOnchainCount() {
+    try {
+      const n = await sepoliaPublic.readContract({
+        address: SKILLLINK_ADDR,
+        abi: SKILLLINK_ABI,
+        functionName: 'skillCount',
+      });
+      $('#onchainCount').textContent = String(n);
+    } catch (e) {
+      $('#onchainCount').textContent = '?';
+    }
+  }
+  refreshOnchainCount();
+
+  $('#onchainRun').addEventListener('click', async () => {
+    const btn = $('#onchainRun');
+    const out = $('#onchainResult');
+    btn.disabled = true;
+    btn.textContent = 'RUNNING…';
+    out.textContent = '→ cast call → SkillLink → BestQuoteAggregator → uni + sushi';
+    out.style.color = 'var(--text-secondary)';
+    const t0 = performance.now();
+    try {
+      const node = namehash('agg.skilltest.eth');
+      // encodeFunctionData(getBestQuote(string), ['ethereum'])
+      // selector + dynamic string encoding
+      const innerCalldata = '0x0777905b' +
+        '0000000000000000000000000000000000000000000000000000000000000020' + // offset
+        '0000000000000000000000000000000000000000000000000000000000000008' + // length
+        '657468657265756d000000000000000000000000000000000000000000000000';   // "ethereum"
+      const raw = await sepoliaPublic.readContract({
+        address: SKILLLINK_ADDR,
+        abi: SKILLLINK_ABI,
+        functionName: 'call',
+        args: [node, innerCalldata],
+      });
+      // raw is bytes; decode last 32 bytes as uint256
+      const hex = raw.startsWith('0x') ? raw.slice(2) : raw;
+      const valHex = hex.slice(-64);
+      const val = BigInt('0x' + valHex);
+      const usd = Number(val) / 1_000_000;
+      const dt = (performance.now() - t0).toFixed(0);
+      out.innerHTML =
+        `<span style="color:var(--success)">$${usd.toFixed(2)}</span> · 3 hops · ${dt}ms · ` +
+        `<a href="https://sepolia.etherscan.io/address/${SKILLLINK_ADDR}" target="_blank" style="color:var(--text-display);text-decoration:underline">verify ↗</a>`;
+    } catch (e) {
+      out.textContent = `error: ${e.shortMessage ?? e.message ?? String(e)}`;
+      out.style.color = 'var(--accent-red)';
+    } finally {
+      btn.textContent = 'RUN DEMO →';
+      btn.disabled = false;
+    }
+  });
 
   $('#resolveBtn').addEventListener('click', runResolve);
   $('#ensInput').addEventListener('keydown', (e) => {
