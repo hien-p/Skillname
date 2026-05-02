@@ -25,16 +25,26 @@
             "description": "Public Passport scorer id (335 = Unique Humanity)"
           }
         },
-        "required": ["address"]
+        "required": [
+          "address"
+        ]
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "address": { "type": "string" },
-          "score": { "type": "string" },
+          "address": {
+            "type": "string"
+          },
+          "score": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
-            "enum": ["DONE", "PROCESSING", "ERROR"]
+            "enum": [
+              "DONE",
+              "PROCESSING",
+              "ERROR"
+            ]
           }
         }
       },
@@ -46,6 +56,12 @@
     }
   ],
   "trust": {
-    "ensip25": { "enabled": false }
+    "ensip25": {
+      "enabled": true
+    },
+    "erc8004": {
+      "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
+      "agentId": 9
+    }
   }
 }

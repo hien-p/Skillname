@@ -38,7 +38,10 @@
             "default": 2
           }
         },
-        "required": ["latitude", "longitude"]
+        "required": [
+          "latitude",
+          "longitude"
+        ]
       },
       "execution": {
         "type": "http",
@@ -48,6 +51,12 @@
     }
   ],
   "trust": {
-    "ensip25": { "enabled": false }
+    "ensip25": {
+      "enabled": true
+    },
+    "erc8004": {
+      "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
+      "agentId": 10
+    }
   }
 }

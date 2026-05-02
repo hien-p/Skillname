@@ -29,7 +29,10 @@
             "description": "Token symbol (default: USDC)"
           }
         },
-        "required": ["to", "amount"]
+        "required": [
+          "to",
+          "amount"
+        ]
       },
       "execution": {
         "type": "keeperhub",
@@ -45,10 +48,12 @@
     }
   ],
   "trust": {
-    "ensip25": { "enabled": true },
+    "ensip25": {
+      "enabled": true
+    },
     "erc8004": {
-      "registry": "eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-      "agentId": 42
+      "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
+      "agentId": 8
     }
   }
 }

@@ -1,0 +1,8 @@
+# Foundry build outputs
+out/
+cache/
+foundry.lock
+
+# Broadcast records — keep deploy logs out of the diff for now; flip to
+# commit if we want them as on-chain provenance for the prize submission.
+broadcast/
