@@ -447,6 +447,57 @@ export interface DependencyNode {
 export interface WalkImportsOptions extends ResolveOptions {
   /** Maximum recursion depth (default: 5) */
   maxDepth?: number;
+  /**
+   * If true, check the root for `xyz.manifest.skill.lockfile` and use the
+   * pinned CIDs in the lockfile for transitive resolution instead of
+   * walking ENS imports fresh. Falls through to live resolution if no
+   * lockfile is present. Default: true (reproducible by default).
+   */
+  useLockfile?: boolean;
+}
+
+export interface LockfileEntry {
+  ensName: string;
+  version: string;
+  cid: string;
+}
+
+export interface LockfileDocument {
+  $schema?: string;
+  root: string;
+  generatedAt?: string;
+  entries: LockfileEntry[];
+}
+
+/**
+ * Fetch and parse a lockfile JSON given its URI (`0g://0x…` or `ipfs://…`).
+ * Reuses the same fetch path as bundle manifests.
+ */
+export async function fetchLockfile(
+  uri: string,
+  options: ResolveOptions = {},
+): Promise<LockfileDocument> {
+  if (uri.startsWith("0g://")) {
+    const root = uri.slice(5);
+    const url = `${OG_INDEXER_URL}/file?root=${root}`;
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(`0G fetch for lockfile ${root}: HTTP ${res.status}`);
+    return (await res.json()) as LockfileDocument;
+  }
+  if (uri.startsWith("ipfs://")) {
+    const cid = uri.slice(7);
+    const gateways = options.ipfsGateways ?? DEFAULT_GATEWAYS;
+    for (const gw of gateways) {
+      try {
+        const r = await fetch(`${gw}${cid}`);
+        if (r.ok) return (await r.json()) as LockfileDocument;
+      } catch {
+        /* try next */
+      }
+    }
+    throw new Error(`all IPFS gateways failed for lockfile ${cid}`);
+  }
+  throw new Error(`unsupported lockfile URI: ${uri.slice(0, 12)}…`);
 }
 
 /**
@@ -463,8 +514,14 @@ export interface WalkImportsOptions extends ResolveOptions {
 export async function walkImports(
   ensName: string,
   options: WalkImportsOptions = {},
-): Promise<{ root: DependencyNode; flat: ResolveResult[] }> {
+): Promise<{
+  root: DependencyNode;
+  flat: ResolveResult[];
+  /** Set when transitive resolution was driven by a lockfile (reproducible build). */
+  lockfile?: LockfileDocument;
+}> {
   const maxDepth = options.maxDepth ?? 5;
+  const useLockfile = options.useLockfile ?? true;
   const chain = options.chain ?? "sepolia";
 
   const client = createPublicClient({
@@ -475,28 +532,79 @@ export async function walkImports(
   const universalResolverAddress: Address | undefined =
     chain === "sepolia" ? ENS_SEPOLIA.universalResolver : undefined;
 
+  // ── Step 1: resolve the root via live ENS so we can read its lockfile record ──
+  const rootResult = await resolveSkill(ensName, options);
+  const rootNormalized = normalize(ensName);
+
+  // ── Step 2: optionally use a lockfile for transitive resolution ──
+  let lockfile: LockfileDocument | undefined;
+  if (useLockfile) {
+    const lockfileUri = await client.getEnsText({
+      name: rootNormalized,
+      key: SKILL_LOCKFILE_KEY,
+      universalResolverAddress,
+    });
+    if (lockfileUri) {
+      try {
+        lockfile = await fetchLockfile(lockfileUri, options);
+      } catch (e) {
+        // Lockfile present but unfetchable — fall back to live resolution
+        // rather than fail loud, so a misconfigured pin doesn't break import.
+        console.warn(
+          `lockfile at ${lockfileUri} unfetchable, falling back to live resolution: ${(e as Error).message}`,
+        );
+      }
+    }
+  }
+
+  // Lockfile-driven path: load each entry's manifest at the pinned CID.
+  if (lockfile) {
+    const flat: ResolveResult[] = [rootResult];
+    const childResults = new Map<string, ResolveResult>();
+    for (const entry of lockfile.entries) {
+      if (normalize(entry.ensName) === rootNormalized) continue;
+      const bundle = await fetchAndVerify(entry.cid, options);
+      const r: ResolveResult = {
+        ensName: normalize(entry.ensName),
+        cid: entry.cid,
+        version: entry.version,
+        bundle,
+        verified: !options.skipVerification,
+      };
+      flat.push(r);
+      childResults.set(r.ensName, r);
+    }
+
+    // Reconstruct a tree shape from the manifests' declared imports for the
+    // benefit of callers that traverse children.
+    function buildNode(name: string, result: ResolveResult, depth: number): DependencyNode {
+      if (depth > maxDepth) {
+        throw new Error(`Max dependency depth (${maxDepth}) exceeded at ${name}`);
+      }
+      const importNames = parseImports(undefined, result.bundle.dependencies);
+      const children: DependencyNode[] = [];
+      for (const childName of importNames) {
+        const childN = normalize(childName);
+        const childResult = childResults.get(childN);
+        if (!childResult) {
+          // Lockfile is incomplete for this branch — skip rather than error.
+          continue;
+        }
+        children.push(buildNode(childName, childResult, depth + 1));
+      }
+      return { ensName: normalize(name), result, children };
+    }
+    const root = buildNode(ensName, rootResult, 0);
+    return { root, flat, lockfile };
+  }
+
+  // ── Live ENS-driven path (original behavior) ──
   const visited = new Set<string>();
-  const flat: ResolveResult[] = [];
+  visited.add(rootNormalized);
+  const flat: ResolveResult[] = [rootResult];
 
-  async function walk(name: string, depth: number): Promise<DependencyNode> {
+  async function walk(name: string, depth: number, result: ResolveResult): Promise<DependencyNode> {
     const normalized = normalize(name);
-
-    if (visited.has(normalized)) {
-      throw new Error(
-        `Cycle detected: ${normalized} already in dependency chain`,
-      );
-    }
-    if (depth > maxDepth) {
-      throw new Error(
-        `Max dependency depth (${maxDepth}) exceeded at ${normalized}`,
-      );
-    }
-
-    visited.add(normalized);
-
-    // Resolve the skill itself
-    const result = await resolveSkill(name, options);
-    flat.push(result);
 
     // Read imports text record
     const importsRaw = await client.getEnsText({
@@ -505,25 +613,29 @@ export async function walkImports(
       universalResolverAddress,
     });
 
-    // Parse comma-separated ENS names, also check bundle.dependencies
     const importNames = parseImports(importsRaw, result.bundle.dependencies);
 
-    // Recursively walk children
     const children: DependencyNode[] = [];
     for (const childName of importNames) {
       const childNormalized = normalize(childName);
       if (visited.has(childNormalized)) {
-        // Already resolved (diamond dependency) — skip, don't error
         continue;
       }
-      const child = await walk(childName, depth + 1);
-      children.push(child);
+      if (depth + 1 > maxDepth) {
+        throw new Error(
+          `Max dependency depth (${maxDepth}) exceeded at ${childNormalized}`,
+        );
+      }
+      visited.add(childNormalized);
+      const childResult = await resolveSkill(childName, options);
+      flat.push(childResult);
+      children.push(await walk(childName, depth + 1, childResult));
     }
 
     return { ensName: normalized, result, children };
   }
 
-  const root = await walk(ensName, 0);
+  const root = await walk(ensName, 0, rootResult);
   return { root, flat };
 }
 
