@@ -14,7 +14,7 @@
   "tools": [
     {
       "name": "research_token",
-      "description": "Fan out to three imported skills: get the token's USD price via quote.skilltest.eth, the holder's Gitcoin Passport score via score.skilltest.eth, then ask infer.skilltest.eth (0G Compute) for a one-sentence verdict on whether to interact. Returns all three artefacts plus the verdict.",
+      "description": "Composite research on a token + holder. Fans out to three imported skills internally: get the token's USD price via quote.skilltest.eth, the holder's Gitcoin Passport score via score.skilltest.eth, then ask infer.skilltest.eth (0G Compute, qwen-2.5-7b) for a one-sentence verdict. REQUIRED ARGS: token_id (CoinGecko coin id, e.g. 'usd-coin' / 'ethereum') and holder_address (0x-prefixed address). Do NOT use 'token' or 'address' — those names will be ignored. Returns { price_usd, passport_score, verdict, sources }.",
       "inputSchema": {
         "type": "object",
         "required": ["token_id", "holder_address"],

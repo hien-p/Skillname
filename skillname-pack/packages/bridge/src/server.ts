@@ -22,6 +22,25 @@
  *   → Claude can immediately call it
  */
 
+// MCP STDIO transport is sacred: stdout MUST contain ONLY JSON-RPC messages.
+// Several deps (notably @0glabs/0g-serving-broker which prints "Detected testnet
+// (chain ID: 16602)") use console.log → that lands on stdout and breaks the
+// wire protocol with "Unexpected token 'D'... is not valid JSON" client errors.
+// Monkey-patch BEFORE any other import so all subsequent console output goes
+// to stderr where it belongs. This must run before MCP SDK or any 0G code loads.
+{
+  const toStderr = (...args: unknown[]) => {
+    const line = args
+      .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
+      .join(" ");
+    process.stderr.write(line + "\n");
+  };
+  console.log = toStderr;
+  console.info = toStderr;
+  console.debug = toStderr;
+  // console.warn + console.error already write to stderr by Node default.
+}
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
