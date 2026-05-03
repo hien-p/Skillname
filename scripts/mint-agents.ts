@@ -23,13 +23,16 @@ import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 
 const REGISTRY = "0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4" as const;
-const NAMES = [
+const DEFAULT_NAMES = [
   "hello.skilltest.eth",
   "quote.skilltest.eth",
   "swap.skilltest.eth",
   "score.skilltest.eth",
   "weather.skilltest.eth",
 ];
+// Accept ENS names from argv so the script can be re-run for late-added
+// bundles (e.g. infer.skilltest.eth, agent.skilltest.eth — see issue #69).
+const NAMES = process.argv.slice(2).length > 0 ? process.argv.slice(2) : DEFAULT_NAMES;
 
 const ABI = parseAbi([
   "function register(string name) external returns (uint256 agentId)",

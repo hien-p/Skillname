@@ -2,8 +2,8 @@
   "$schema": "https://manifest.eth/schemas/skill-v1.json",
   "name": "agent-research",
   "ensName": "agent.skilltest.eth",
-  "version": "1.0.0",
-  "description": "Composite skill: research a token + holder by fanning out to three atomic skills — quote (price), score (Passport reputation), infer (LLM verdict). Demonstrates the import-graph: one ENS name resolves to three transitive tools at the bridge.",
+  "version": "1.1.3",
+  "description": "Composite skill: research a token + holder by fanning out to three atomic skills \u2014 quote (price), score (Passport reputation), infer (LLM verdict). Demonstrates the import-graph: one ENS name resolves to three transitive tools at the bridge.",
   "createdAt": "2026-05-02T00:00:00Z",
   "license": "MIT",
   "dependencies": [
@@ -14,15 +14,21 @@
   "tools": [
     {
       "name": "research_token",
-      "description": "Composite research on a token + holder. Fans out to three imported skills internally: get the token's USD price via quote.skilltest.eth, the holder's Gitcoin Passport score via score.skilltest.eth, then ask infer.skilltest.eth (0G Compute, qwen-2.5-7b) for a one-sentence verdict. REQUIRED ARGS: token_id (CoinGecko coin id, e.g. 'usd-coin' / 'ethereum') and holder_address (0x-prefixed address). Do NOT use 'token' or 'address' — those names will be ignored. Returns { price_usd, passport_score, verdict, sources }.",
+      "description": "Composite research on a token + holder. Fans out to three imported skills internally: get the token's USD price via quote.skilltest.eth, the holder's Gitcoin Passport score via score.skilltest.eth, then ask infer.skilltest.eth (0G Compute, qwen-2.5-7b) for a one-sentence verdict. REQUIRED ARGS: token_id (CoinGecko coin id, e.g. 'usd-coin' / 'ethereum') and holder_address (0x-prefixed address). Do NOT use 'token' or 'address' \u2014 those names will be ignored. Returns { price_usd, passport_score, verdict, sources }.",
       "inputSchema": {
         "type": "object",
-        "required": ["token_id", "holder_address"],
+        "required": [
+          "token_id",
+          "holder_address"
+        ],
         "properties": {
           "token_id": {
             "type": "string",
             "description": "CoinGecko coin id (e.g. 'ethereum', 'usd-coin')",
-            "examples": ["ethereum", "usd-coin"]
+            "examples": [
+              "ethereum",
+              "usd-coin"
+            ]
           },
           "holder_address": {
             "type": "string",
@@ -34,21 +40,31 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "price_usd": { "type": "number" },
-          "passport_score": { "type": "string" },
-          "verdict": { "type": "string" }
+          "price_usd": {
+            "type": "number"
+          },
+          "passport_score": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string"
+          }
         }
       },
       "execution": {
         "type": "local",
         "runtime": "ctx-v1",
-        "code": "(async ({ token_id, holder_address }, ctx) => { const [quote, social] = await Promise.all([ ctx.call('quote.skilltest.eth', 'get_quote', { ids: token_id }).catch(e => ({ _err: String(e?.message ?? e) })), ctx.call('score.skilltest.eth', 'trust_score', { address: holder_address }).catch(e => ({ _err: String(e?.message ?? e) })) ]); const price_usd = quote?.[token_id]?.usd ?? null; const followers = social?.followers_count; const following = social?.following_count; const social_signal = followers !== undefined ? `${followers} EFP followers, ${following} following` : (social?._err ? `unavailable (${social._err.slice(0, 60)})` : 'unknown'); const promptText = `Token \"${token_id}\" trades at $${price_usd}. Holder ${holder_address} has ${social_signal} on Ethereum Follow Protocol. In one sentence: is this a reasonable counterparty to interact with on-chain?`; let verdict; try { const v = await ctx.call('infer.skilltest.eth', 'infer', { prompt: promptText }); verdict = typeof v === 'string' ? v : (v?.text ?? v?.content?.[0]?.text ?? JSON.stringify(v)); } catch (e) { verdict = `0G Compute unavailable: ${String(e?.message ?? e).slice(0, 80)}`; } return { token_id, holder_address, price_usd, social_signal, followers, following, verdict, sources: { quote: 'quote.skilltest.eth → CoinGecko', social: 'score.skilltest.eth → Ethereum Follow Protocol (EFP)', verdict: 'infer.skilltest.eth → 0G Compute (qwen-2.5-7b)' } }; })"
+        "code": "(async ({ token_id, holder_address }, ctx) => { const [quote, social] = await Promise.all([ ctx.call('quote.skilltest.eth', 'get_quote', { ids: token_id }).catch(e => ({ _err: String(e?.message ?? e) })), ctx.call('score.skilltest.eth', 'trust_score', { address: holder_address }).catch(e => ({ _err: String(e?.message ?? e) })) ]); const price_usd = quote?.[token_id]?.usd ?? null; const followers = social?.followers_count; const following = social?.following_count; const social_signal = followers !== undefined ? `${followers} EFP followers, ${following} following` : (social?._err ? `unavailable (${social._err.slice(0, 60)})` : 'unknown'); const promptText = `Token \"${token_id}\" trades at $${price_usd}. Holder ${holder_address} has ${social_signal} on Ethereum Follow Protocol. In one sentence: is this a reasonable counterparty to interact with on-chain?`; let verdict; try { const v = await ctx.call('infer.skilltest.eth', 'infer', { prompt: promptText }); verdict = typeof v === 'string' ? v : (v?.text ?? v?.content?.[0]?.text ?? JSON.stringify(v)); } catch (e) { verdict = `0G Compute unavailable: ${String(e?.message ?? e).slice(0, 80)}`; } return { token_id, holder_address, price_usd, social_signal, followers, following, verdict, sources: { quote: 'quote.skilltest.eth \u2192 CoinGecko', social: 'score.skilltest.eth \u2192 Ethereum Follow Protocol (EFP)', verdict: 'infer.skilltest.eth \u2192 0G Compute (qwen-2.5-7b)' } }; })"
       }
     }
   ],
   "trust": {
     "ensip25": {
       "enabled": true
+    },
+    "erc8004": {
+      "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
+      "agentId": 12
     }
   }
 }

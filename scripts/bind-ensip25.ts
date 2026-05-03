@@ -38,7 +38,10 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
-import { encodeErc7930 } from "@skillname/sdk";
+// Workspace package isn't published; import from the built dist by relative
+// path (same convention as scripts/verify-ensip25.ts). Keeps the script
+// runnable from the repo root via pnpm tsx.
+import { encodeErc7930 } from "../skillname-pack/packages/sdk/dist/index.js";
 
 const RESOLVER_DEFAULT = "0xE99638b40E4Fff0129D56f03b55b6bbC4BBE49b5";
 
@@ -71,8 +74,11 @@ async function main() {
   const key = `agent-registration[${erc7930}][${agentId}]`;
   const node = namehash(ensName);
 
-  const privateKey = process.env.SEPOLIA_PRIVATE_KEY;
-  if (!privateKey) throw new Error("SEPOLIA_PRIVATE_KEY not set");
+  const rawKey = process.env.SEPOLIA_PRIVATE_KEY;
+  if (!rawKey) throw new Error("SEPOLIA_PRIVATE_KEY not set");
+  // Tolerate keys stored without the 0x prefix (the .env in this repo
+  // historically did so — see register-skills.ts for the same fix).
+  const privateKey = (rawKey.toLowerCase().startsWith("0x") ? rawKey : `0x${rawKey}`) as `0x${string}`;
 
   const rpcUrl =
     process.env.SEPOLIA_RPC_URL ??
@@ -82,7 +88,7 @@ async function main() {
     RESOLVER_DEFAULT) as `0x${string}`;
   if (!isAddress(resolver)) throw new Error(`Invalid resolver: ${resolver}`);
 
-  const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const account = privateKeyToAccount(privateKey);
   const publicClient = createPublicClient({
     chain: sepolia,
     transport: http(rpcUrl),
