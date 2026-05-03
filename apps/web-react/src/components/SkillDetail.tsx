@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { resolveSkill, type ResolvedSkill } from "../lib/skill-resolve";
+import { TrustPanel } from "./TrustPanel";
+import { TryItButton } from "./TryItButton";
 
-const TABS = ["Readme", "Tools", "Trust"] as const;
+const TABS = ["Readme", "Tools", "Dependencies", "Trust"] as const;
 type Tab = typeof TABS[number];
 
 interface Props {
@@ -61,6 +63,9 @@ export function SkillDetail({ ensName, onClose }: Props) {
                 {t === "Tools" && (
                   <span className="ml-2 text-xs text-slate-ink">{r.manifest.tools.length}</span>
                 )}
+                {t === "Dependencies" && (
+                  <span className="ml-2 text-xs text-slate-ink">{r.manifest.dependencies?.length ?? 0}</span>
+                )}
               </button>
             ))}
           </nav>
@@ -104,55 +109,41 @@ export function SkillDetail({ ensName, onClose }: Props) {
                         {t.execution.type}
                       </div>
                       <p className="font-body text-sm mt-2 text-storm-gray">{t.description}</p>
+                      <TryItButton tool={t} />
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {tab === "Trust" && (
+            {tab === "Dependencies" && (
               <div className="mt-8">
-                <h2 className="font-display text-3xl mb-4">Trust</h2>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Pip ok={r.manifest.trust?.ensip25?.enabled ?? false} />
-                    ENSIP-25 — {r.manifest.trust?.ensip25?.enabled ? "enabled" : "disabled"}
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Pip ok={!!r.manifest.trust?.erc8004} />
-                    {r.manifest.trust?.erc8004 ? (
-                      <span>
-                        ERC-8004 binding — registry{" "}
-                        <code className="font-mono text-xs break-all">
-                          {r.manifest.trust.erc8004.registry}
-                        </code>{" "}
-                        · agentId {r.manifest.trust.erc8004.agentId}
-                      </span>
-                    ) : (
-                      <span>ERC-8004 binding — none</span>
-                    )}
-                  </li>
-                </ul>
-                {r.manifest.trust?.erc8004 && (
-                  <div className="mt-4 text-sm text-slate-ink font-body">
-                    Verifiable on-chain via{" "}
-                    <a
-                      href={`https://sepolia.etherscan.io/address/${r.manifest.trust.erc8004.registry.split(":").pop()}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline"
-                    >
-                      Sepolia Etherscan ↗
-                    </a>
-                    . The ENS text record key{" "}
-                    <code className="font-mono text-xs">
-                      agent-registration[&lt;erc7930&gt;][{r.manifest.trust.erc8004.agentId}]
-                    </code>{" "}
-                    proves the bidirectional binding per ENSIP-25.
+                <h2 className="font-display text-3xl mb-4">Dependencies</h2>
+                {(r.manifest.dependencies ?? []).length === 0 ? (
+                  <div className="border border-fog-border rounded p-6 bg-pure-surface text-sm text-storm-gray font-body">
+                    <strong className="font-semibold text-midnight-navy block mb-2">No dependencies</strong>
+                    Leaf skill — its <code className="font-mono">dependencies[]</code> array is empty,
+                    so the bridge can register it without walking a graph. Composite skills list
+                    their imports here as ENS pointers and the bridge resolves them transitively.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {r.manifest.dependencies!.map((d) => (
+                      <a
+                        key={d}
+                        href={`#/skill/${d}`}
+                        className="block border border-fog-border rounded p-4 bg-pure-surface hover:border-midnight-navy"
+                      >
+                        <div className="font-mono text-[10px] uppercase tracking-wider text-slate-ink">IMPORT</div>
+                        <div className="font-mono text-sm font-semibold mt-1">{d}</div>
+                      </a>
+                    ))}
                   </div>
                 )}
               </div>
             )}
+
+            {tab === "Trust" && <TrustPanel ensName={ensName} manifest={r.manifest} />}
           </section>
 
           <aside className="font-mono text-xs space-y-4">
@@ -164,6 +155,40 @@ export function SkillDetail({ ensName, onClose }: Props) {
               <p className="text-[11px] text-slate-ink mt-2 font-body">
                 Type this in Claude Desktop after wiring the bridge MCP server.
               </p>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-slate-ink">Trust</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] ${
+                    r.manifest.trust?.ensip25?.enabled
+                      ? "border-bento-success/30 bg-bento-success/10 text-bento-success"
+                      : "border-fog-border bg-ghost-canvas text-ash-medium"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                  ENSIP-25 {r.manifest.trust?.ensip25?.enabled ? "✓" : "—"}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] ${
+                    r.manifest.trust?.erc8004
+                      ? "border-bento-success/30 bg-bento-success/10 text-bento-success"
+                      : "border-fog-border bg-ghost-canvas text-ash-medium"
+                  }`}
+                  title={r.manifest.trust?.erc8004?.registry}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                  {r.manifest.trust?.erc8004
+                    ? `ERC-8004 #${r.manifest.trust.erc8004.agentId}`
+                    : "ERC-8004 unbound"}
+                </span>
+              </div>
+              <button
+                onClick={() => setTab("Trust")}
+                className="text-[11px] text-slate-ink underline mt-2 font-body hover:text-midnight-navy"
+              >
+                View full trust block →
+              </button>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-slate-ink">Source</div>
@@ -183,12 +208,3 @@ export function SkillDetail({ ensName, onClose }: Props) {
   );
 }
 
-function Pip({ ok }: { ok: boolean }) {
-  return (
-    <span
-      className={`inline-block w-2 h-2 rounded-full mt-1.5 ${
-        ok ? "bg-bento-success" : "bg-fog-border"
-      }`}
-    />
-  );
-}

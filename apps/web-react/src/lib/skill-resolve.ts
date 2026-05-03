@@ -19,7 +19,19 @@ export interface SkillManifest {
   version: string;
   description?: string;
   license?: string;
-  tools: { name: string; description: string; execution: { type: string } }[];
+  tools: {
+    name: string;
+    description: string;
+    inputSchema?: {
+      type?: string;
+      required?: string[];
+      properties?: Record<string, { type?: string; default?: unknown; description?: string; examples?: unknown[] }>;
+    };
+    execution: { type: string; endpoint?: string; method?: string };
+  }[];
+  // Schema-canonical field for ENS-resolved imports. The ENS text record
+  // xyz.manifest.skill.imports mirrors this for SDK dep-graph walking.
+  dependencies?: string[];
   trust?: {
     ensip25?: { enabled: boolean };
     erc8004?: { registry: string; agentId: number };

@@ -40,19 +40,25 @@ export function OnchainCard() {
   const [demoResult, setDemoResult] = useState<string | null>(null);
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoMs, setDemoMs] = useState<number | null>(null);
+  // Cycle through tokens so judges can click multiple times and see different
+  // real on-chain reads — replayable demo, not a one-shot.
+  const TOKEN_CYCLE = ["ethereum", "usd-coin", "wrapped-bitcoin", "chainlink"];
+  const [tokenIdx, setTokenIdx] = useState(0);
+  const currentToken = TOKEN_CYCLE[tokenIdx];
 
   async function runDemo() {
     if (!publicClient) return;
     setDemoBusy(true);
     setDemoError(null);
     setDemoResult(null);
+    const token = TOKEN_CYCLE[tokenIdx];
     const t0 = performance.now();
     try {
       const node = namehash("agg.skilltest.eth");
       const innerCalldata = encodeFunctionData({
         abi: [GET_BEST_QUOTE],
         functionName: "getBestQuote",
-        args: ["ethereum"],
+        args: [token],
       });
       const { result } = await publicClient.simulateContract({
         address: SKILLLINK_ADDR,
@@ -62,8 +68,9 @@ export function OnchainCard() {
       });
       const [decoded] = decodeAbiParameters([{ type: "uint256" }], result as `0x${string}`);
       const usd = Number(decoded) / 1_000_000;
-      setDemoResult(`$${usd.toFixed(2)}`);
+      setDemoResult(`${token} = $${usd.toFixed(2)}`);
       setDemoMs(Math.round(performance.now() - t0));
+      setTokenIdx((i) => (i + 1) % TOKEN_CYCLE.length);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setDemoError(msg);
@@ -127,7 +134,7 @@ export function OnchainCard() {
         )}
         {demoError && <span className="text-bento-accent-red">error: {demoError.slice(0, 60)}</span>}
         {!demoResult && !demoError && (
-          <span>agg.skilltest.eth → getBestQuote(&quot;ethereum&quot;)</span>
+          <span>agg.skilltest.eth → getBestQuote(&quot;{currentToken}&quot;)</span>
         )}
       </div>
     </div>
