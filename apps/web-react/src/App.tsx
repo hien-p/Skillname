@@ -14,6 +14,7 @@ import { LiveTracePanel } from "./components/LiveTracePanel";
 import { PitchPanel } from "./components/PitchPanel";
 import { MySkillsCard } from "./components/MySkillsCard";
 import { OGStorageCard } from "./components/OGStorageCard";
+import { OnchainActivityChart } from "./components/OnchainActivityChart";
 import { useRoute } from "./lib/router";
 import type { ResolvedSkill } from "./lib/skill-resolve";
 
@@ -77,6 +78,12 @@ export function App() {
           <ExecutorsCard
             active={execFilter}
             onFilter={(exec) => setExecFilter((curr) => (curr === exec ? null : exec))}
+          />
+        </div>
+
+        <div className="col-span-12">
+          <OnchainActivityChart
+            onSelect={(ens) => navigate({ kind: "skill", ensName: ens })}
           />
         </div>
       </main>
