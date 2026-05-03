@@ -579,6 +579,18 @@ async function executeHttp(
 ) {
   const exec = tool.execution as Extract<Tool["execution"], { type: "http" }>;
   const t0 = Date.now();
+
+  // Apply inputSchema defaults for any field the caller omitted. Without this,
+  // Claude (or any MCP client) has to guess which optional fields the upstream
+  // API actually requires — quote-uniswap__get_quote was failing 4xx because
+  // CoinGecko needs vs_currencies even though the manifest schema marks it as
+  // having default "usd". MCP doesn't auto-apply schema defaults; we do.
+  const props = (tool.inputSchema as { properties?: Record<string, { default?: unknown }> } | undefined)?.properties ?? {};
+  const merged: Record<string, unknown> = { ...args };
+  for (const [k, v] of Object.entries(props)) {
+    if (merged[k] === undefined && v && "default" in v) merged[k] = v.default;
+  }
+
   log.out(`${exec.method ?? "POST"} ${exec.endpoint}`);
 
   // For GET, send args as query string; for everything else, JSON body.
@@ -586,13 +598,13 @@ async function executeHttp(
   let init: RequestInit = { method: exec.method ?? "POST" };
   if ((exec.method ?? "POST") === "GET") {
     const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(args)) {
+    for (const [k, v] of Object.entries(merged)) {
       if (v !== undefined && v !== null) qs.set(k, String(v));
     }
     url += (url.includes("?") ? "&" : "?") + qs.toString();
   } else {
     init.headers = { "Content-Type": "application/json" };
-    init.body = JSON.stringify(args);
+    init.body = JSON.stringify(merged);
   }
 
   const res = await fetch(url, init);
