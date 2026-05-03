@@ -8,7 +8,9 @@ interface FlatTool {
 
 // Static flat list — keeps the overlay snappy without N manifest fetches.
 // Update this whenever a published bundle adds/removes a tool.
-const FLAT_TOOLS: FlatTool[] = [
+// Exported so the Hero footer can show a real "tools registered" total
+// instead of a placeholder.
+export const FLAT_TOOLS: FlatTool[] = [
   {
     ens: "agent.skilltest.eth",
     tool: "research_token",

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { resolveSkill, type ResolvedSkill } from "../lib/skill-resolve";
 import { OGStorageBadge } from "./OGStorageBadge";
+import { CATALOG_ITEMS } from "./SkillCatalog";
+import { FLAT_TOOLS } from "./ToolsOverlay";
 
 interface HeroProps {
   onResolved: (ens: string, r: ResolvedSkill) => void;
@@ -113,28 +115,33 @@ export function Hero({ onResolved }: HeroProps) {
         </div>
       )}
 
-      {/* Bundle integrity + tools count footer */}
+      {/* Bundle integrity + tools count footer — bound to live registry totals */}
       <div className="mt-8 pt-6 border-t border-bento-border flex items-end justify-between">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-wider text-bento-text-secondary">
-            BUNDLE INTEGRITY
+            BUNDLE INTEGRITY · {CATALOG_ITEMS.length}/{CATALOG_ITEMS.length} BOUND
           </div>
-          <div className="mt-2 flex items-end gap-1 h-6">
-            {[3, 4, 6, 5, 7, 8, 6, 9].map((h, i) => (
-              <span
-                key={i}
-                className="block w-1.5 bg-bento-text-display/40"
-                style={{ height: `${h * 3}px` }}
-              />
-            ))}
+          <div className="mt-2 flex items-end gap-1 h-6" title="One bar per published skill — solid = ENSIP-25 bound">
+            {CATALOG_ITEMS.map((it, i) => {
+              // Vary heights so the bars read as a chart not a block; cycle 4 levels.
+              const heights = [14, 18, 12, 20, 16, 22, 18];
+              return (
+                <span
+                  key={it.ens}
+                  className="block w-2 bg-chartreuse-pulse"
+                  style={{ height: `${heights[i % heights.length]}px` }}
+                  title={`${it.ens} · bound`}
+                />
+              );
+            })}
           </div>
         </div>
         <div className="text-right">
           <div className="font-doto text-5xl text-bento-text-display">
-            {String(tools.length).padStart(3, "0")}
+            {String(FLAT_TOOLS.length).padStart(3, "0")}
           </div>
           <div className="font-mono text-[10px] uppercase tracking-wider text-bento-text-secondary">
-            TOOLS REGISTERED
+            TOOLS REGISTERED · across {CATALOG_ITEMS.length} skills
           </div>
         </div>
       </div>
