@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { resolveSkill, type ResolvedSkill } from "../lib/skill-resolve";
+import { OGStorageBadge } from "./OGStorageBadge";
 
 interface HeroProps {
   onResolved: (ens: string, r: ResolvedSkill) => void;
@@ -85,13 +86,18 @@ export function Hero({ onResolved }: HeroProps) {
         </div>
       </div>
 
-      {/* CID line */}
-      <div className="mt-3 min-h-[20px] font-mono text-xs">
+      {/* Storage badge + CID line */}
+      <div className="mt-3 min-h-[28px] font-mono text-xs space-y-2">
         {error && <div className="text-bento-accent-red">error · {error}</div>}
         {result && !error && (
-          <div className="text-bento-success break-all">
-            {result.cid} · validated{result.resolvedFromRange && ` · resolved from ${result.resolvedFromRange}`}
-          </div>
+          <>
+            <OGStorageBadge storage={result.storage} ensMs={result.ensMs} variant="dark" />
+            {result.resolvedFromRange && (
+              <div className="text-bento-text-secondary text-[10px] uppercase tracking-wider">
+                resolved from {result.resolvedFromRange}
+              </div>
+            )}
+          </>
         )}
       </div>
 

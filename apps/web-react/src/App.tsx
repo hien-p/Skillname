@@ -13,6 +13,7 @@ import { PublishOverlay } from "./components/PublishOverlay";
 import { LiveTracePanel } from "./components/LiveTracePanel";
 import { PitchPanel } from "./components/PitchPanel";
 import { MySkillsCard } from "./components/MySkillsCard";
+import { OGStorageCard } from "./components/OGStorageCard";
 import { useRoute } from "./lib/router";
 import type { ResolvedSkill } from "./lib/skill-resolve";
 
@@ -63,10 +64,13 @@ export function App() {
           <OnchainCard />
         </div>
         <div className="col-span-12 sm:col-span-6 lg:col-span-4">
-          <SchemaCard onOpen={() => setOverlay("schema")} />
+          <OGStorageCard />
         </div>
         <div className="col-span-12 sm:col-span-6 lg:col-span-4">
           <TotalToolsCard onOpen={() => setOverlay("tools")} />
+        </div>
+        <div className="col-span-12 sm:col-span-6 lg:col-span-4">
+          <SchemaCard onOpen={() => setOverlay("schema")} />
         </div>
 
         <div className="col-span-12 lg:col-span-8">

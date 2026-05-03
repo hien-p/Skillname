@@ -8,9 +8,17 @@ const VERSIONS_KEY = "xyz.manifest.skill.versions";
 export interface ResolvedSkill {
   ensName: string;
   manifest: SkillManifest;
-  cid: string;
-  ms: number;
+  cid: string;                    // raw URI value (0g://… or ipfs://…)
+  ms: number;                     // total resolve time
   resolvedFromRange?: string;
+  storage: {
+    kind: "0g" | "ipfs";
+    root: string;                 // hex root for 0g, CID for ipfs
+    fetchMs: number;              // time for the storage round-trip
+    fetchUrl: string;             // exact URL the browser hit
+    indexerHost?: string;         // 0G indexer hostname (or ipfs gateway)
+  };
+  ensMs: number;                  // time spent reading the text record
 }
 
 export interface SkillManifest {
@@ -117,19 +125,43 @@ async function resolveVersionedName(
 
 const OG_INDEXER_URL = "https://indexer-storage-testnet-turbo.0g.ai";
 
-async function fetchManifest(uri: string): Promise<SkillManifest> {
+interface FetchedManifest {
+  manifest: SkillManifest;
+  storage: ResolvedSkill["storage"];
+}
+
+async function fetchManifest(uri: string): Promise<FetchedManifest> {
   if (uri.startsWith("0g://")) {
     const root = uri.slice(5);
     const url = `${OG_INDEXER_URL}/file?root=${root}`;
+    const t0 = performance.now();
     const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const fetchMs = Math.round(performance.now() - t0);
     if (!res.ok) throw new Error(`0G fetch failed for ${root}: HTTP ${res.status}`);
-    return (await res.json()) as SkillManifest;
+    const manifest = (await res.json()) as SkillManifest;
+    return {
+      manifest,
+      storage: {
+        kind: "0g",
+        root,
+        fetchMs,
+        fetchUrl: url,
+        indexerHost: new URL(OG_INDEXER_URL).host,
+      },
+    };
   }
   if (uri.startsWith("ipfs://")) {
     const cid = uri.slice(7);
-    const res = await fetch(`https://w3s.link/ipfs/${cid}/manifest.json`);
+    const url = `https://w3s.link/ipfs/${cid}/manifest.json`;
+    const t0 = performance.now();
+    const res = await fetch(url);
+    const fetchMs = Math.round(performance.now() - t0);
     if (!res.ok) throw new Error(`IPFS fetch failed for ${cid}`);
-    return (await res.json()) as SkillManifest;
+    const manifest = (await res.json()) as SkillManifest;
+    return {
+      manifest,
+      storage: { kind: "ipfs", root: cid, fetchMs, fetchUrl: url, indexerHost: "w3s.link" },
+    };
   }
   throw new Error(`unsupported URI scheme: ${uri.slice(0, 12)}…`);
 }
@@ -147,15 +179,19 @@ export async function resolveSkill(
     ensName = await resolveVersionedName(ensName, chain);
   }
   const normalized = normalize(ensName);
+  const ensT0 = performance.now();
   const uri = await clients[chain].getEnsText({ name: normalized, key: SKILL_KEY });
+  const ensMs = Math.round(performance.now() - ensT0);
   if (!uri) throw new Error(`no ${SKILL_KEY} text record on ${ensName}`);
-  const manifest = await fetchManifest(uri);
+  const { manifest, storage } = await fetchManifest(uri);
   return {
     ensName: normalized,
     manifest,
     cid: uri,
     ms: Math.round(performance.now() - t0),
     resolvedFromRange,
+    storage,
+    ensMs,
   };
 }
 

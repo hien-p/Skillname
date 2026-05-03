@@ -9,6 +9,7 @@ import {
 import { sepolia } from "viem/chains";
 import { isAddress, namehash, parseAbi, type Hex } from "viem";
 import { SKILLLINK_ADDR } from "../lib/contracts";
+import { CallerLog } from "./CallerLog";
 
 const SKILLS_ABI = parseAbi([
   "function skills(bytes32 node) external view returns (address impl, address owner, uint96 registeredAt, uint256 selectorBitmap)",
@@ -535,6 +536,9 @@ export function RegistryPanel({ ensName }: Props) {
           </div>
         </>
       )}
+
+      {/* Activity log shows in both states — registered (with calls) or pre-registration */}
+      <CallerLog ensName={ensName} />
     </div>
   );
 }

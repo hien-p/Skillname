@@ -10,6 +10,7 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "dev:bridge": "pnpm --filter @skillname/bridge dev",
+    "pin:server": "tsx scripts/pin-server.ts",
     "cli": "pnpm --filter @skillname/cli exec skill",
     "validate-skills": "./scripts/test-issue-10.sh"
   },
