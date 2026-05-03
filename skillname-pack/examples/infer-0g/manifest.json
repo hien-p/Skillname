@@ -33,5 +33,12 @@
         "systemPrompt": "You are a helpful AI assistant running on 0G Compute Network — a decentralized, censorship-resistant inference layer. Answer concisely and accurately."
       }
     }
-  ]
+  ],
+  "trust": {
+    "ensip25": { "enabled": true },
+    "erc8004": {
+      "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
+      "agentId": 11
+    }
+  }
 }

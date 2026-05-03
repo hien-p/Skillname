@@ -26,10 +26,14 @@ const NAMES = [
   "swap.skilltest.eth",
   "score.skilltest.eth",
   "weather.skilltest.eth",
+  // Added 2026-05-03 (issue #69): infer + agent skills published after #56
+  // closed; bound via mint-agents.ts agentIds 11/12.
+  "infer.skilltest.eth",
+  "agent.skilltest.eth",
 ];
 
 async function main() {
-  console.log("verifying ENSIP-25 binding on 5 reference subnames\n");
+  console.log(`verifying ENSIP-25 binding on ${NAMES.length} reference subnames\n`);
   let pass = 0;
   let fail = 0;
   for (const name of NAMES) {
