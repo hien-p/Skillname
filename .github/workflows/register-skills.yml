@@ -47,3 +47,11 @@ jobs:
             ARGS="$ARGS --cids ${{ inputs.cids }}"
           fi
           pnpm tsx scripts/register-skills.ts $ARGS
+
+      # Issue #69: smoke test ENSIP-25 binding after every register run, so a
+      # broken text record (or a re-pin that drops the binding) fails the
+      # workflow instead of silently degrading the demo signal.
+      - name: Verify ENSIP-25 binding
+        env:
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+        run: pnpm tsx scripts/verify-ensip25.ts
