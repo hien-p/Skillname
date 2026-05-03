@@ -192,7 +192,7 @@ export function SkillDetail({ ensName, onClose }: Props) {
                   <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
                   {r.manifest.trust?.erc8004
                     ? `ERC-8004 #${r.manifest.trust.erc8004.agentId}`
-                    : "ERC-8004 unbound"}
+                    : "ERC-8004 — not declared"}
                 </span>
               </div>
               <button

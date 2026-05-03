@@ -1,64 +1,41 @@
 {
   "$schema": "https://manifest.eth/schemas/skill-v1.json",
-  "name": "score-gitcoin",
-  "ensName": "score.gitcoin.eth",
-  "version": "1.0.0",
-  "description": "One function: get a Gitcoin Passport trust score for an Ethereum address. Pure read-only, free.",
-  "author": "0x0000000000000000000000000000000000000000",
-  "createdAt": "2026-04-28T00:00:00Z",
+  "name": "score-efp",
+  "ensName": "score.skilltest.eth",
+  "version": "1.1.0",
+  "description": "One function: read a wallet's social-trust signal from Ethereum Follow Protocol (EFP) — followers + following counts. Free, no auth, public reads only. Replaces the previous Gitcoin Passport endpoint that required an API key.",
   "license": "MIT",
   "tools": [
     {
       "name": "trust_score",
-      "description": "Returns the Gitcoin Passport score for the given address using the public Sybil-resistance scorer. Higher score = more verifiable identity stamps.",
+      "description": "Returns EFP follower/following counts for the given address — a social-trust heuristic that doesn't need API keys. High follower count = wallet has built up a reputation in EFP's social graph.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "address": {
             "type": "string",
             "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "Ethereum address to score"
-          },
-          "scorerId": {
-            "type": "integer",
-            "default": 335,
-            "description": "Public Passport scorer id (335 = Unique Humanity)"
+            "description": "Ethereum address (or ENS name) to look up"
           }
         },
-        "required": [
-          "address"
-        ]
+        "required": ["address"]
       },
       "outputSchema": {
         "type": "object",
         "properties": {
-          "address": {
-            "type": "string"
-          },
-          "score": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "DONE",
-              "PROCESSING",
-              "ERROR"
-            ]
-          }
+          "followers_count": { "type": "number" },
+          "following_count": { "type": "number" }
         }
       },
       "execution": {
         "type": "http",
-        "endpoint": "https://api.passport.xyz/v2/stamps/335/score",
+        "endpoint": "https://api.ethfollow.xyz/api/v1/users/{address}/stats",
         "method": "GET"
       }
     }
   ],
   "trust": {
-    "ensip25": {
-      "enabled": true
-    },
+    "ensip25": { "enabled": true },
     "erc8004": {
       "registry": "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4",
       "agentId": 9

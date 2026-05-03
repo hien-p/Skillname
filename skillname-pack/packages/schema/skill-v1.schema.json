@@ -178,7 +178,10 @@
       "required": ["type", "endpoint"],
       "properties": {
         "type": { "const": "http" },
-        "endpoint": { "type": "string", "format": "uri" },
+        "endpoint": {
+          "type": "string",
+          "description": "HTTP endpoint URL. May contain {paramName} path templates (RFC 6570 simple expansion) — those are substituted from the call's args before fetch. Hence we don't enforce strict 'uri' format which would reject template tokens."
+        },
         "method": {
           "type": "string",
           "enum": ["GET", "POST", "PUT", "DELETE"],
