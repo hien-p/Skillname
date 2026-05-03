@@ -107,7 +107,12 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
 
 const server = new Server(
   { name: "skillname", version: "0.0.1" },
-  { capabilities: { tools: {} } },
+  // listChanged: true is critical — without it, MCP clients (Claude Desktop)
+  // don't subscribe to tools/list_changed notifications and never see the
+  // tools that skill_import dynamically registers. The handler already calls
+  // server.sendToolListChanged() after each import; this declaration lets
+  // the client know it should re-fetch tools/list when that fires.
+  { capabilities: { tools: { listChanged: true } } },
 );
 
 // Built-in: skill_import — replaces the old manifest_load
