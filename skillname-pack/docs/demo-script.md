@@ -24,15 +24,15 @@
 
 ## Scene 3 — Resolution magic (0:45–1:30)
 
-**Visual:** Type in Claude: "Use research.agent.eth"
+**Visual:** Type in Claude: "Use agent.skilltest.eth"
 
 **Show on screen** (split window: Claude on left, terminal log on right):
-- Bridge log: `→ getEnsText(research.agent.eth, "xyz.manifest.skill")`
+- Bridge log: `→ getEnsText(agent.skilltest.eth, "xyz.manifest.skill")`
 - Bridge log: `→ ipfs://bafybei...`
 - Bridge log: `→ fetch + verify CID hash ✓`
 - Bridge log: `→ ENSIP-25 check: agent-registration[...][42] = "1" ✓`
 - Bridge log: `→ Registered 3 tools`
-- Claude reply: "Loaded 3 tools from research.agent.eth (verified ✓)"
+- Claude reply: "Loaded 3 tools from agent.skilltest.eth (verified ✓)"
 
 **Narration:**
 > "ENS resolution. IPFS fetch. Hash verification. ENSIP-25 binding to ERC-8004. Three tools registered. Three seconds total. No code changed in Claude."
@@ -42,21 +42,33 @@
 ## Scene 4 — Show ENS app & ERC-8004 (1:30–2:10)
 
 **Visual:** Browser. Two tabs side by side:
-- Tab 1: ENS app showing `research.agent.eth` with text records visible (`xyz.manifest.skill`, `xyz.manifest.skill.version`, `agent-registration[...][...]`)
-- Tab 2: Etherscan on Base — ERC-8004 IdentityRegistry NFT for agentId 42, owned by the same address that controls `research.agent.eth`. Bidirectional verified.
+- Tab 1: ENS app showing `agent.skilltest.eth` with text records visible (`xyz.manifest.skill`, `xyz.manifest.skill.version`, `agent-registration[...][...]`)
+- Tab 2: Etherscan on Base — ERC-8004 IdentityRegistry NFT for agentId 42, owned by the same address that controls `agent.skilltest.eth`. Bidirectional verified.
 
 **Narration:**
 > "Here's the ENS name in the wild. Three text records: skill bundle CID, version, ENSIP-25 binding. The binding cross-references ERC-8004 IdentityRegistry on Base. Both directions verified. This is what the green checkmark in Claude is reading."
 
 ---
 
-## Scene 5 — Free tool: contract_scan (2:10–2:35)
+## Scene 5 — Live tool execution: get_quote (2:10–2:45)
 
-**Visual:** Back to Claude. Type: "Scan contract 0x... on Base."
-Claude calls `research_agent__contract_scan` → returns metadata + risk notes.
+> **Replaces the old "BaseScanner" beat.** Real ENS name, real bundle, real HTTP call. See `docs/demo-rerecord-import-beat.md` for the complete shot list, prompts, and Claude Desktop config the editor needs to capture this scene.
+
+**Visual:** Back to Claude. Type:
+> Use quote.skilltest.eth to get me the current price of ETH and USDC.
+
+Show on screen (split: Claude on left, terminal log on right):
+- Bridge log: `→ manifest_load(quote.skilltest.eth, sepolia)`
+- Bridge log: `→ getEnsText(quote.skilltest.eth, "xyz.manifest.skill")`
+- Bridge log: `→ 0g://0x5d27a5c2…7a2`
+- Bridge log: `→ fetch from indexer-storage-testnet-turbo.0g.ai (38 ms)`
+- Bridge log: `→ Registered tool: quote-uniswap__get_quote`
+- Claude reply: "Loaded quote.skilltest.eth. Calling get_quote…"
+- Claude tool call: `quote-uniswap__get_quote(ids: "ethereum,usd-coin")`
+- Claude reply: "ETH is $3,427.18, USDC is $1.00 (CoinGecko, just now)."
 
 **Narration:**
-> "First tool: contract_scan. Free. Local execution. Pure read. Nothing fancy."
+> "One ENS name. The bridge resolves it, fetches the manifest off 0G storage in under 50 milliseconds, and registers the tool. Now Claude calls it — get_quote — and CoinGecko answers in real time. No SDK install. No adapter code. The whole loop ran on `quote.skilltest.eth`."
 
 ---
 
@@ -65,7 +77,7 @@ Claude calls `research_agent__contract_scan` → returns metadata + risk notes.
 **Visual:** Type: "Execute a contract call to swap 10 USDC to ETH on Base Sepolia."
 
 **Show on screen** (split: Claude + bridge log + BaseScan):
-- Bridge log: `→ tool: research_agent__execute_contract_call`
+- Bridge log: `→ tool: agent_research__execute_contract_call`
 - Bridge log: `→ POST keeperhub-paid endpoint`
 - Bridge log: `← HTTP 402 Payment Required: $0.05 USDC`
 - Bridge log: `→ signing EIP-3009 transferWithAuthorization`
