@@ -700,20 +700,37 @@ async function executeHttp(
     if (merged[k] === undefined && v && "default" in v) merged[k] = v.default;
   }
 
-  log.out(`${exec.method ?? "POST"} ${exec.endpoint}`);
-
-  // For GET, send args as query string; for everything else, JSON body.
+  // Path-templating: endpoint can contain {paramName} placeholders that get
+  // substituted from args BEFORE the query-string pass. Lets manifests target
+  // REST-shaped endpoints like https://api.example.com/users/{address}/stats.
   let url = exec.endpoint;
+  const consumed = new Set<string>();
+  url = url.replace(/\{(\w+)\}/g, (m, key) => {
+    if (merged[key] !== undefined && merged[key] !== null) {
+      consumed.add(key);
+      return encodeURIComponent(String(merged[key]));
+    }
+    return m; // leave unsubstituted; upstream will likely 4xx
+  });
+
+  log.out(`${exec.method ?? "POST"} ${url.split("?")[0]}`);
+
+  // For GET, send remaining args as query string; for everything else, JSON body.
   let init: RequestInit = { method: exec.method ?? "POST" };
   if ((exec.method ?? "POST") === "GET") {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) {
+      if (consumed.has(k)) continue; // already used as path param
       if (v !== undefined && v !== null) qs.set(k, String(v));
     }
-    url += (url.includes("?") ? "&" : "?") + qs.toString();
+    const qstr = qs.toString();
+    if (qstr) url += (url.includes("?") ? "&" : "?") + qstr;
   } else {
     init.headers = { "Content-Type": "application/json" };
-    init.body = JSON.stringify(merged);
+    // Drop path-consumed args from JSON body too so upstream isn't confused
+    const bodyArgs = { ...merged };
+    for (const k of consumed) delete bodyArgs[k];
+    init.body = JSON.stringify(bodyArgs);
   }
 
   const res = await fetch(url, init);
