@@ -7,12 +7,22 @@ import { SchemaCard } from "./components/SchemaCard";
 import { ExecutorsCard } from "./components/ExecutorsCard";
 import { TotalToolsCard } from "./components/TotalToolsCard";
 import { SkillDetail } from "./components/SkillDetail";
+import { SchemaOverlay } from "./components/SchemaOverlay";
+import { ToolsOverlay } from "./components/ToolsOverlay";
+import { PublishOverlay } from "./components/PublishOverlay";
+import { LiveTracePanel } from "./components/LiveTracePanel";
+import { PitchPanel } from "./components/PitchPanel";
+import { MySkillsCard } from "./components/MySkillsCard";
 import { useRoute } from "./lib/router";
 import type { ResolvedSkill } from "./lib/skill-resolve";
 
 export function App() {
   const [route, navigate] = useRoute();
   const [, setLastResolved] = useState<{ ens: string; r: ResolvedSkill } | null>(null);
+  // Catalog filter driven by ExecutorsCard chips + a transient overlay state
+  // for the Schema and Tools cards so every bento card is now click-active.
+  const [execFilter, setExecFilter] = useState<string | null>(null);
+  const [overlay, setOverlay] = useState<"schema" | "tools" | null>(null);
 
   return (
     <div className="min-h-screen bg-bento-black text-bento-text-primary flex flex-col">
@@ -27,21 +37,43 @@ export function App() {
         />
 
         <div className="col-span-12 lg:col-span-4">
-          <SkillCatalog onSelect={(ens) => navigate({ kind: "skill", ensName: ens })} />
+          <MySkillsCard
+            onSelect={(ens) => navigate({ kind: "skill", ensName: ens })}
+            onPublish={() => navigate({ kind: "publish" })}
+          />
+        </div>
+
+        <div className="col-span-12">
+          <PitchPanel />
+        </div>
+
+        <div className="col-span-12">
+          <LiveTracePanel />
+        </div>
+
+        <div className="col-span-12 lg:col-span-4">
+          <SkillCatalog
+            onSelect={(ens) => navigate({ kind: "skill", ensName: ens })}
+            filter={execFilter}
+            onClearFilter={() => setExecFilter(null)}
+          />
         </div>
 
         <div className="col-span-12 sm:col-span-6 lg:col-span-4">
           <OnchainCard />
         </div>
         <div className="col-span-12 sm:col-span-6 lg:col-span-4">
-          <SchemaCard />
+          <SchemaCard onOpen={() => setOverlay("schema")} />
         </div>
         <div className="col-span-12 sm:col-span-6 lg:col-span-4">
-          <TotalToolsCard />
+          <TotalToolsCard onOpen={() => setOverlay("tools")} />
         </div>
 
         <div className="col-span-12 lg:col-span-8">
-          <ExecutorsCard />
+          <ExecutorsCard
+            active={execFilter}
+            onFilter={(exec) => setExecFilter((curr) => (curr === exec ? null : exec))}
+          />
         </div>
       </main>
 
@@ -64,36 +96,19 @@ export function App() {
         />
       )}
       {route.kind === "publish" && (
-        <PublishStub onClose={() => navigate({ kind: "home" })} />
+        <PublishOverlay onClose={() => navigate({ kind: "home" })} />
+      )}
+      {overlay === "schema" && <SchemaOverlay onClose={() => setOverlay(null)} />}
+      {overlay === "tools" && (
+        <ToolsOverlay
+          onClose={() => setOverlay(null)}
+          onOpenSkill={(ens) => {
+            setOverlay(null);
+            navigate({ kind: "skill", ensName: ens });
+          }}
+        />
       )}
     </div>
   );
 }
 
-function PublishStub({ onClose }: { onClose: () => void }) {
-  return (
-    <aside className="fixed inset-0 z-40 bg-ghost-canvas text-midnight-navy overflow-y-auto">
-      <header className="sticky top-0 bg-ghost-canvas/90 backdrop-blur border-b border-fog-border px-6 py-4 flex items-center justify-between">
-        <button
-          onClick={onClose}
-          className="px-3 py-1 border border-fog-border rounded-full font-mono text-xs hover:border-midnight-navy"
-        >
-          ← Back
-        </button>
-        <span className="font-display text-lg">Publish a new skill</span>
-        <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-pure-surface" aria-label="close">×</button>
-      </header>
-      <main className="max-w-3xl mx-auto px-6 py-12 text-center font-body">
-        <h1 className="font-display text-4xl">Publish flow — coming soon</h1>
-        <p className="mt-4 text-slate-ink">
-          For now use the CLI: <code className="font-mono">skill publish &lt;dir&gt; &lt;ens&gt;</code>
-        </p>
-        <pre className="mt-6 inline-block text-left bg-bento-black text-bento-text-primary p-4 rounded font-mono text-sm">
-{`pnpm cli skill publish \\
-  skillname-pack/examples/quote-uniswap \\
-  quote.skilltest.eth`}
-        </pre>
-      </main>
-    </aside>
-  );
-}

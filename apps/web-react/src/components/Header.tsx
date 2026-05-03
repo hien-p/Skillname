@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { sepolia } from "viem/chains";
 import { useBlockNumber } from "wagmi";
+import { WalletButton } from "./WalletButton";
 
 export function Header({ onPublish }: { onPublish: () => void }) {
   const { data: blockNumber } = useBlockNumber({ chainId: sepolia.id, watch: true });
@@ -39,6 +40,7 @@ export function Header({ onPublish }: { onPublish: () => void }) {
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-bento-accent-red animate-pulse" />
           live
         </span>
+        <WalletButton />
         <button
           type="button"
           onClick={onPublish}
