@@ -270,10 +270,9 @@ export function RegistryPanel({ ensName }: Props) {
       <h2 className="font-display text-3xl mb-2">Registry</h2>
       <p className="font-body text-sm text-slate-ink mb-6 max-w-2xl">
         On-chain mapping <code className="font-mono">ENS namehash → impl contract + allowed selectors</code>{" "}
-        in the <code className="font-mono">SkillLink</code> registry on Sepolia. This is the
-        same shape as Sui&apos;s MVR — &quot;look up a name, get the executable on-chain
-        address.&quot; Any contract or EOA can dispatch this skill by name without
-        knowing the impl address.
+        in the <code className="font-mono">SkillLink</code> registry on Sepolia. Look up a
+        skill by name, get the executable on-chain address — any contract or EOA can
+        dispatch this skill by namehash without knowing the impl address.
       </p>
 
       {loading && <div className="font-mono text-xs text-slate-ink">querying SkillLink…</div>}
