@@ -15,6 +15,7 @@ import { PitchPanel } from "./components/PitchPanel";
 import { MySkillsCard } from "./components/MySkillsCard";
 import { OGStorageCard } from "./components/OGStorageCard";
 import { OnchainActivityChart } from "./components/OnchainActivityChart";
+import { TrustBindingsCard } from "./components/TrustBindingsCard";
 import { useRoute } from "./lib/router";
 import type { ResolvedSkill } from "./lib/skill-resolve";
 
@@ -66,6 +67,11 @@ export function App() {
         </div>
         <div className="col-span-12 sm:col-span-6 lg:col-span-4">
           <OGStorageCard />
+        </div>
+        <div className="col-span-12 sm:col-span-6 lg:col-span-4">
+          <TrustBindingsCard
+            onSelect={(ens) => navigate({ kind: "skill", ensName: ens })}
+          />
         </div>
         <div className="col-span-12 sm:col-span-6 lg:col-span-4">
           <TotalToolsCard onOpen={() => setOverlay("tools")} />

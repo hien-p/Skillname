@@ -1,14 +1,21 @@
-interface CatalogItem {
+export interface CatalogItem {
   ens: string;
   exec: string;
   badge?: string;
+  // Static knowledge of which catalog skills have an ENSIP-25 + ERC-8004
+  // trust binding declared in their manifest. The TrustBindingsCard verifies
+  // each one against on-chain state at page load — this is just the seed.
+  trust?: { agentId: number; registry: string };
 }
+
+const SEPOLIA_REGISTRY =
+  "eip155:11155111:0x48f77FfE1f02FB94bDe9c8ffe84bB4956ace11e4";
 
 // Exported so the tools-overlay + filter chips can share the same source of truth.
 export const CATALOG_ITEMS: CatalogItem[] = [
-  { ens: "agent.skilltest.eth",   exec: "local",      badge: "composite · 3 imports" },
-  { ens: "quote.skilltest.eth",   exec: "http" },
-  { ens: "swap.skilltest.eth",    exec: "keeperhub",  badge: "x402" },
+  { ens: "agent.skilltest.eth",   exec: "local",      badge: "composite · 3 imports", trust: { agentId: 12, registry: SEPOLIA_REGISTRY } },
+  { ens: "quote.skilltest.eth",   exec: "http",                                       trust: { agentId: 7,  registry: SEPOLIA_REGISTRY } },
+  { ens: "swap.skilltest.eth",    exec: "keeperhub",  badge: "x402",                  trust: { agentId: 8,  registry: SEPOLIA_REGISTRY } },
   { ens: "basescan.skilltest.eth", exec: "http",      badge: "live · base" },
   { ens: "score.skilltest.eth",   exec: "http" },
   { ens: "weather.skilltest.eth", exec: "http" },
@@ -53,7 +60,17 @@ export function SkillCatalog({ onSelect, filter, onClearFilter }: Props) {
             onClick={() => onSelect(it.ens)}
             className="w-full flex items-center justify-between py-3 px-2 rounded hover:bg-ghost-canvas text-left"
           >
-            <span className="font-mono text-base text-midnight-navy">{it.ens}</span>
+            <span className="flex items-center gap-2 font-mono text-base text-midnight-navy">
+              {it.ens}
+              {it.trust && (
+                <span
+                  className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-bento-success/15 text-bento-success border border-bento-success/40"
+                  title={`ENSIP-25 bound to ERC-8004 agentId ${it.trust.agentId}`}
+                >
+                  ✓ ENSIP-25 · #{it.trust.agentId}
+                </span>
+              )}
+            </span>
             <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-slate-ink">
               <span>{it.exec}</span>
               {it.badge && <span className="text-bento-accent-red">· {it.badge}</span>}
