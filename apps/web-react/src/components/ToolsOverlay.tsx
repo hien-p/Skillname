@@ -32,6 +32,20 @@ export const FLAT_TOOLS: FlatTool[] = [
     badge: "x402",
   },
   {
+    ens: "basescan.skilltest.eth",
+    tool: "scan_contract",
+    exec: "http",
+    description: "Verified Solidity source + ABI for any contract on Base mainnet. Blockscout v1, no auth.",
+    badge: "live · base",
+  },
+  {
+    ens: "basescan.skilltest.eth",
+    tool: "get_token",
+    exec: "http",
+    description: "ERC-20/721 token metadata (name, symbol, decimals, totalSupply) on Base mainnet.",
+    badge: "live · base",
+  },
+  {
     ens: "score.skilltest.eth",
     tool: "trust_score",
     exec: "http",
