@@ -1,6 +1,7 @@
 import { createPublicClient, http, namehash, type PublicClient } from "viem";
 import { sepolia, mainnet } from "viem/chains";
 import { normalize } from "viem/ens";
+import { sepoliaTransport } from "./sepolia-transport";
 
 const SKILL_KEY = "xyz.manifest.skill";
 const VERSIONS_KEY = "xyz.manifest.skill.versions";
@@ -47,7 +48,7 @@ export interface SkillManifest {
 }
 
 const clients: Record<"sepolia" | "mainnet", PublicClient> = {
-  sepolia: createPublicClient({ chain: sepolia, transport: http() }) as PublicClient,
+  sepolia: createPublicClient({ chain: sepolia, transport: sepoliaTransport }) as PublicClient,
   mainnet: createPublicClient({ chain: mainnet, transport: http() }) as PublicClient,
 };
 

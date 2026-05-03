@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { createPublicClient, http } from "viem";
+import { createPublicClient } from "viem";
 import { sepolia } from "viem/chains";
 import { normalize } from "viem/ens";
 import { resolveSkill, type SkillManifest } from "../lib/skill-resolve";
+import { sepoliaTransport } from "../lib/sepolia-transport";
 
 // What this panel does — and why it's the hero of the page:
 //
@@ -35,7 +36,7 @@ interface Step {
 const TARGET_ENS = "agent.skilltest.eth";
 const SAMPLE_TOKEN = "ethereum";
 
-const sepoliaClient = createPublicClient({ chain: sepolia, transport: http() });
+const sepoliaClient = createPublicClient({ chain: sepolia, transport: sepoliaTransport });
 
 export function LiveTracePanel() {
   const [steps, setSteps] = useState<Step[]>([]);
