@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { resolveSkill, type ResolvedSkill } from "../lib/skill-resolve";
 import { TrustPanel } from "./TrustPanel";
 import { TryItButton } from "./TryItButton";
+import { RegistryPanel } from "./RegistryPanel";
 
-const TABS = ["Readme", "Tools", "Dependencies", "Trust"] as const;
+const TABS = ["Readme", "Tools", "Registry", "Dependencies", "Trust"] as const;
 type Tab = typeof TABS[number];
 
 interface Props {
@@ -142,6 +143,8 @@ export function SkillDetail({ ensName, onClose }: Props) {
                 )}
               </div>
             )}
+
+            {tab === "Registry" && <RegistryPanel ensName={ensName} />}
 
             {tab === "Trust" && <TrustPanel ensName={ensName} manifest={r.manifest} />}
           </section>
