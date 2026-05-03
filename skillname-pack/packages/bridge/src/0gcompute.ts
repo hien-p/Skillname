@@ -31,9 +31,11 @@ const {
 } = _require('@0glabs/0g-serving-broker') as typeof import('@0glabs/0g-serving-broker')
 
 const OG_RPC = process.env.OG_RPC_URL ?? 'https://evmrpc-testnet.0g.ai'
-// SEPOLIA_PRIVATE_KEY is the same EVM account — works on 0G Galileo too
+// SEPOLIA_PRIVATE_KEY is the same EVM account — works on 0G Galileo too.
+// Use || not ?? so empty-string env values (e.g. .env line `OG_COMPUTE_PRIVATE_KEY=`)
+// fall through to SEPOLIA_PRIVATE_KEY. ?? only falls through nullish; "" passes through.
 const OG_COMPUTE_PRIVATE_KEY =
-  process.env.OG_COMPUTE_PRIVATE_KEY ?? process.env.SEPOLIA_PRIVATE_KEY ?? ''
+  process.env.OG_COMPUTE_PRIVATE_KEY || process.env.SEPOLIA_PRIVATE_KEY || ''
 const OG_AUTO_INIT_LEDGER = process.env.OG_AUTO_INIT_LEDGER === '1'
 
 // Match the broker's "Sub-account not found" / "Account does not exist" error.
