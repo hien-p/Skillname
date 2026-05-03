@@ -4,6 +4,8 @@ import { TrustPanel } from "./TrustPanel";
 import { TryItButton } from "./TryItButton";
 import { RegistryPanel } from "./RegistryPanel";
 import { OGStorageBadge } from "./OGStorageBadge";
+import { SkillActivityChart } from "./SkillActivityChart";
+import { DependencyGraph } from "./DependencyGraph";
 
 const TABS = ["Readme", "Tools", "Registry", "Dependencies", "Trust"] as const;
 type Tab = typeof TABS[number];
@@ -85,16 +87,19 @@ export function SkillDetail({ ensName, onClose }: Props) {
             </div>
 
             {tab === "Readme" && (
-              <div className="mt-8 font-display text-lg max-w-2xl">
-                <h2 className="font-display text-3xl mb-4">Readme</h2>
-                <p>{r.manifest.description}</p>
-                <p className="mt-4 text-sm text-slate-ink font-body">
-                  This skill exposes <b>{r.manifest.tools.length}</b> atomic tool(s), routed
-                  through the <code className="font-mono">{r.manifest.tools[0]?.execution.type}</code>{" "}
-                  executor in the bridge. It complies with the{" "}
-                  <code className="font-mono">skill-v1.json</code> schema and is content-addressed
-                  on 0G storage; the CID above is the canonical pinned root.
-                </p>
+              <div className="mt-8 space-y-6">
+                <SkillActivityChart ensName={ensName} />
+                <div className="font-display text-lg max-w-2xl">
+                  <h2 className="font-display text-3xl mb-4">Readme</h2>
+                  <p>{r.manifest.description}</p>
+                  <p className="mt-4 text-sm text-slate-ink font-body">
+                    This skill exposes <b>{r.manifest.tools.length}</b> atomic tool(s), routed
+                    through the <code className="font-mono">{r.manifest.tools[0]?.execution.type}</code>{" "}
+                    executor in the bridge. It complies with the{" "}
+                    <code className="font-mono">skill-v1.json</code> schema and is content-addressed
+                    on 0G storage; the CID above is the canonical pinned root.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -122,16 +127,16 @@ export function SkillDetail({ ensName, onClose }: Props) {
             )}
 
             {tab === "Dependencies" && (
-              <div className="mt-8">
+              <div className="mt-8 space-y-6">
                 <h2 className="font-display text-3xl mb-4">Dependencies</h2>
-                {(r.manifest.dependencies ?? []).length === 0 ? (
-                  <div className="border border-fog-border rounded p-6 bg-pure-surface text-sm text-storm-gray font-body">
-                    <strong className="font-semibold text-midnight-navy block mb-2">No dependencies</strong>
-                    Leaf skill — its <code className="font-mono">dependencies[]</code> array is empty,
-                    so the bridge can register it without walking a graph. Composite skills list
-                    their imports here as ENS pointers and the bridge resolves them transitively.
-                  </div>
-                ) : (
+                <DependencyGraph
+                  ensName={ensName}
+                  dependencies={r.manifest.dependencies}
+                  onSelect={(ens) => {
+                    location.hash = `#/skill/${ens}`;
+                  }}
+                />
+                {(r.manifest.dependencies ?? []).length > 0 && (
                   <div className="space-y-2">
                     {r.manifest.dependencies!.map((d) => (
                       <a
