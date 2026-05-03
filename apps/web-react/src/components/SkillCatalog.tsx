@@ -9,6 +9,7 @@ export const CATALOG_ITEMS: CatalogItem[] = [
   { ens: "agent.skilltest.eth",   exec: "local",      badge: "composite · 3 imports" },
   { ens: "quote.skilltest.eth",   exec: "http" },
   { ens: "swap.skilltest.eth",    exec: "keeperhub",  badge: "x402" },
+  { ens: "basescan.skilltest.eth", exec: "http",      badge: "live · base" },
   { ens: "score.skilltest.eth",   exec: "http" },
   { ens: "weather.skilltest.eth", exec: "http" },
   { ens: "infer.skilltest.eth",   exec: "0g-compute" },

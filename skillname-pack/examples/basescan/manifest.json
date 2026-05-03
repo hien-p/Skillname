@@ -1,0 +1,54 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "basescan",
+  "ensName": "basescan.skilltest.eth",
+  "version": "1.0.0",
+  "description": "Read contract metadata and source on Base mainnet via the Blockscout API. Free, no auth, public reads only.",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "scan_contract",
+      "description": "Fetch verified Solidity source + ABI for any contract on Base mainnet. Returns the source code, compiler settings, and proxy status from the Blockscout v1 API.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Base mainnet contract address (0x + 40 hex)",
+            "examples": [
+              "0x4200000000000000000000000000000000000006"
+            ]
+          }
+        },
+        "required": ["address"]
+      },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://base.blockscout.com/api?module=contract&action=getsourcecode",
+        "method": "GET"
+      }
+    },
+    {
+      "name": "get_token",
+      "description": "Fetch ERC-20 / ERC-721 token metadata (name, symbol, decimals, totalSupply) for a contract on Base mainnet.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contractaddress": {
+            "type": "string",
+            "description": "Base mainnet token contract address",
+            "examples": [
+              "0x4200000000000000000000000000000000000006"
+            ]
+          }
+        },
+        "required": ["contractaddress"]
+      },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://base.blockscout.com/api?module=token&action=getToken",
+        "method": "GET"
+      }
+    }
+  ]
+}
