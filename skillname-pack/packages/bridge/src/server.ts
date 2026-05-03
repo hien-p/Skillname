@@ -244,7 +244,18 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       await server.sendToolListChanged();
 
       const rootResult = root.result;
-      const verified = rootResult.ensip25?.bound ? "✓ verified" : "unverified";
+      // Three trust states (don't conflate the second two):
+      //   1. claim made + confirmed by ENS owner   → "✓ verified"
+      //   2. claim made + ENS doesn't confirm it    → "✗ unverified — manifest claimed an identity the ENS owner didn't sign off on"
+      //   3. no claim at all                        → "no identity binding (stateless skill)"
+      // Previous wording lumped 2 + 3 as just "unverified", which alarmed
+      // users on legitimate stateless skills like chainstats / basescan.
+      const claimed = rootResult.bundle.trust?.erc8004 != null;
+      const verified = claimed
+        ? rootResult.ensip25?.bound
+          ? "✓ verified"
+          : "✗ unverified — manifest's identity claim NOT confirmed by ENS owner"
+        : "no identity binding (stateless skill — fine for read-only tools)";
       const depCount = flat.length - 1;
 
       // Build tools list across all resolved skills
