@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* ─── Antimetal-inspired tokens (mirrored from apps/web/index.html) ──────── */
+@theme {
+  --color-midnight-navy: #1b2540;
+  --color-deep-cosmos:   #001033;
+  --color-chartreuse-pulse: #d0f100;
+  --color-ice-veil:      #e0f6ff;
+  --color-ghost-canvas:  #f8f9fc;
+  --color-pure-surface:  #ffffff;
+  --color-slate-ink:     #6b7184;
+  --color-ash-medium:    #7c8293;
+  --color-storm-gray:    #596075;
+  --color-fog-border:    #b1b5c0;
+
+  /* Bento dark side */
+  --color-bento-black:       #000000;
+  --color-bento-surface:     #111111;
+  --color-bento-raised:      #1A1A1A;
+  --color-bento-border:      #222222;
+  --color-bento-text-primary:#E8E8E8;
+  --color-bento-text-secondary:#999999;
+  --color-bento-text-display:#FFFFFF;
+  --color-bento-success:     #4A9E5C;
+  --color-bento-accent-red:  #D71921;
+
+  --font-display: "Fraunces", serif;
+  --font-body:    "Inter", sans-serif;
+  --font-mono:    "Space Mono", monospace;
+  --font-doto:    "Doto", monospace;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  background: var(--color-ghost-canvas);
+  color: var(--color-midnight-navy);
+}

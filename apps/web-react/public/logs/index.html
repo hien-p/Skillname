@@ -523,12 +523,12 @@
     <section class="grid-hero">
 
       <article class="card hero-today span-2">
-        <div class="hover-flag">TODAY · APR 30</div>
+        <div class="hover-flag">TODAY · MAY 02</div>
         <div class="hero-today-head">
-          <div class="hero-today-num">D7</div>
+          <div class="hero-today-num">D9</div>
           <div class="hero-today-meta">
             <div class="label">CURRENT DAY</div>
-            <div class="v">2026 · 04 · 30</div>
+            <div class="v">2026 · 05 · 02</div>
             <div class="label" style="margin-top:8px">CODE FREEZE</div>
             <div class="v">MAY 5 · 6PM</div>
           </div>
@@ -536,7 +536,7 @@
         <div class="hero-today-foot">
           <div class="latest">
             <div class="label">LATEST COMMIT</div>
-            <div class="hash">867824d · revert: restore 0G as primary</div>
+            <div class="hash">63c2a8d · feat: agent.skilltest.eth composite</div>
           </div>
         </div>
       </article>
@@ -584,12 +584,41 @@
 
       <main>
 
+        <!-- ── DAY 10 ── -->
+        <section class="day-section" id="day-10">
+          <div class="day-header">
+            <div class="day-num">D10</div>
+            <div class="day-name">wallet sign in the UI · on-chain publish + register · my-skills discovery · trust reframed</div>
+            <div class="label">2026·05·03 · SAT · TODAY</div>
+          </div>
+
+          <article class="card entry">
+            <div class="hover-flag">FEATURE</div>
+            <div class="entry-time">11:20 · STAGING</div>
+            <div class="entry-title">Demo is no longer hardcoded — every panel is now wallet-aware</div>
+            <ul>
+              <li>Wallet connect in the header via wagmi <code>injected()</code> + Sepolia chain guard with auto-switch button — connected state shows <code>0x…tail ↗</code> with Etherscan link and disconnect</li>
+              <li><code>+ PUBLISH</code> overlay replaces the &quot;use the CLI&quot; stub: 4 sequential signatures (<code>ENSRegistry.setSubnodeRecord</code> + <code>PublicResolver.setText</code> ×3) for parent / version / schema records, with per-step progress + ENS-owner pre-flight read so judges don&apos;t waste a tx</li>
+              <li>Registry tab gets a real <code>SkillLink.register(node, impl, selectors[])</code> form — wallet, ENS-owner, network hints — plus &quot;Suggested impl&quot; presets for known skills (BestQuoteAggregator) so the inputs aren&apos;t a blank guessing game</li>
+              <li>New <code>MySkillsCard</code> at hero column 9–12: discovers <code>CATALOG_ITEMS</code> ownership against <code>ENSRegistry.owner</code> on Sepolia in one parallel batch, merges with localStorage cache, badges each row <code>● on-chain</code> vs <code>● local</code></li>
+              <li>Trust tab reframed — leads with &quot;Optional. Most skills don&apos;t need this&quot; + checklist of what works without it (resolve / MCP load / compose via imports / SkillLink dispatch / SkillNFT mint), then keeps the spoof-check demo (▶ run + 👻 try a fake) for skills that <em>do</em> declare a binding</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">header wallet badge + my-skills card</div>
+              <div class="proof">publish overlay signing 4 txs</div>
+              <div class="proof">registry register-on-chain form</div>
+              <div class="proof">trust panel with capabilities checklist</div>
+            </div>
+          </article>
+        </section>
+
         <!-- ── DAY 9 ── -->
         <section class="day-section" id="day-9">
           <div class="day-header">
             <div class="day-num">D9</div>
             <div class="day-name">composite skill demo · agent.skilltest.eth published · dependency graph wired · publish-flow fixes</div>
-            <div class="label">2026·05·02 · FRI · TODAY</div>
+            <div class="label">2026·05·02 · FRI</div>
           </div>
 
           <article class="card entry">

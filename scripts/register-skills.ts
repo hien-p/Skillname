@@ -97,7 +97,7 @@ async function main(): Promise<void> {
     console.error('SEPOLIA_PRIVATE_KEY env var not set.')
     process.exit(1)
   }
-  const PRIVATE_KEY = (RAW_KEY.startsWith('0x') ? RAW_KEY : `0x${RAW_KEY}`) as Hex
+  const PRIVATE_KEY = (RAW_KEY.toLowerCase().startsWith('0x') ? RAW_KEY : `0x${RAW_KEY}`) as Hex
 
   const account = privateKeyToAccount(PRIVATE_KEY)
   console.log(`Operator: ${account.address}`)

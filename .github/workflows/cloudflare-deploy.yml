@@ -20,59 +20,22 @@ jobs:
       url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        if: hashFiles('pnpm-lock.yaml') != ''
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node
-        if: hashFiles('pnpm-lock.yaml') != ''
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
+      - run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies
-        if: hashFiles('pnpm-lock.yaml') != ''
-        run: pnpm install --frozen-lockfile
-
-      - name: Build web
-        run: |
-          mkdir -p apps/web/dist
-          if [ -f apps/web/index.html ]; then
-            echo "Using committed apps/web/ static files"
-            rsync -a \
-              --exclude='dist' \
-              --exclude='node_modules' \
-              --exclude='package.json' \
-              --exclude='package-lock.json' \
-              apps/web/ apps/web/dist/
-          elif [ -f apps/web/package.json ] && [ -f pnpm-lock.yaml ]; then
-            pnpm --filter @skillname/web build
-          else
-            echo "::warning::No apps/web yet — deploying placeholder"
-            cat > apps/web/dist/index.html <<'HTML'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head><meta charset="utf-8"><title>skillname</title></head>
-          <body style="font:16px/1.5 system-ui;max-width:40rem;margin:4rem auto;padding:0 1rem">
-          <h1>skillname</h1>
-          <p>ENS-native registry for AI agent skills. Coming soon.</p>
-          <p>Deployed from <code>${{ github.ref_name }}</code> · <code>${{ github.sha }}</code></p>
-          </body>
-          </html>
-          HTML
-          fi
+      - name: Build React app (Vite)
+        run: pnpm --filter @skillname/web-react build
 
       - id: deploy
         name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         env:
-          # wrangler-action runs `pnpm add wrangler` inside the workspace root,
-          # which fails with ERR_PNPM_ADDING_TO_ROOT now that apps/* is a workspace.
-          # This flag tells pnpm to allow it.
           NPM_CONFIG_IGNORE_WORKSPACE_ROOT_CHECK: "true"
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/web/dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.ref_name }} --commit-dirty=true
+          command: pages deploy apps/web-react/dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }} --branch=${{ github.ref_name }} --commit-dirty=true
