@@ -1,0 +1,52 @@
+{
+  "$schema": "https://manifest.eth/schemas/skill-v1.json",
+  "name": "chainstats",
+  "ensName": "chainstats.skilltest.eth",
+  "version": "1.2.0",
+  "description": "Live Base mainnet chain stats via Blockscout — current block, gas prices (slow/average/fast in gwei), ETH price, token supply for any contract. Free, no auth, public reads only.",
+  "license": "MIT",
+  "tools": [
+    {
+      "name": "current_block",
+      "description": "Get the current block number on Base mainnet. Returns a hex-encoded uint256.",
+      "inputSchema": { "type": "object", "properties": {}, "required": [] },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://base.blockscout.com/api?module=block&action=eth_block_number",
+        "method": "GET"
+      }
+    },
+    {
+      "name": "network_stats",
+      "description": "Get live Base mainnet network stats: total blocks indexed, average block time, ETH/USD price, and gas prices for slow/average/fast tiers (in gwei). One call returns everything you need to size a transaction.",
+      "inputSchema": { "type": "object", "properties": {}, "required": [] },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://base.blockscout.com/api/v2/stats",
+        "method": "GET"
+      }
+    },
+    {
+      "name": "token_supply",
+      "description": "Get the total supply of any ERC-20 / ERC-721 token deployed on Base mainnet. Pass the token contract address.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contractaddress": {
+            "type": "string",
+            "description": "Token contract address on Base (0x + 40 hex)",
+            "examples": [
+              "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+            ]
+          }
+        },
+        "required": ["contractaddress"]
+      },
+      "execution": {
+        "type": "http",
+        "endpoint": "https://base.blockscout.com/api?module=stats&action=tokensupply",
+        "method": "GET"
+      }
+    }
+  ]
+}
