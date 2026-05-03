@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { sepolia } from "viem/chains";
-import { namehash } from "viem";
+import { namehash, type Log, type PublicClient } from "viem";
 import { SKILLLINK_ADDR } from "../lib/contracts";
 import { CATALOG_ITEMS } from "./SkillCatalog";
 
@@ -10,6 +10,37 @@ const TOPIC_REGISTERED =
   "0x888c23edb2e1ab0c431a5710f704534d9a0aae0d9cbfaff28e15566529f83cdf";
 const TOPIC_CALLED =
   "0x79d1cf1216936abfff830078fd5ab5cdf95ad84437b39d0c4465ba40bf4c54ae";
+
+// SkillLink deploy block (mirrors apps/analytics START_BLOCK). Public Sepolia
+// RPCs cap eth_getLogs at 1000 blocks per call, so we anchor here and chunk.
+const SKILLLINK_DEPLOY_BLOCK = 10_772_615n;
+const RPC_BLOCK_LIMIT = 1000n;
+
+async function chunkedGetLogs(
+  client: PublicClient,
+  fromBlock: bigint,
+  toBlock: bigint,
+  maxChunks = 50,
+): Promise<Log[]> {
+  const ranges: { from: bigint; to: bigint }[] = [];
+  for (let cur = fromBlock; cur <= toBlock; cur += RPC_BLOCK_LIMIT) {
+    const end = cur + RPC_BLOCK_LIMIT - 1n;
+    ranges.push({ from: cur, to: end > toBlock ? toBlock : end });
+    if (ranges.length >= maxChunks) break;
+  }
+  const results = await Promise.all(
+    ranges.map((r) =>
+      client
+        .getLogs({
+          address: SKILLLINK_ADDR,
+          fromBlock: r.from,
+          toBlock: r.to,
+        })
+        .catch(() => [] as Log[]),
+    ),
+  );
+  return results.flat();
+}
 
 interface SkillBucket {
   ens: string;
@@ -60,12 +91,8 @@ export function OnchainActivityChart({ onSelect }: Props) {
       try {
         const t0 = performance.now();
         const head = await client.getBlockNumber();
-        const fromBlock = head > 600_000n ? head - 600_000n : 0n;
-        const logs = await client.getLogs({
-          address: SKILLLINK_ADDR,
-          fromBlock,
-          toBlock: head,
-        });
+        const fromBlock = SKILLLINK_DEPLOY_BLOCK;
+        const logs = await chunkedGetLogs(client, fromBlock, head);
         const byNode = new Map<string, SkillBucket>(
           CATALOG_ITEMS.map((it) => [
             namehash(it.ens).toLowerCase(),

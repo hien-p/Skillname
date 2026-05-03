@@ -1,5 +1,11 @@
-import { decodeAbiParameters, namehash, parseAbiItem, type PublicClient } from "viem";
+import { decodeAbiParameters, namehash, parseAbiItem, type Log, type PublicClient } from "viem";
 import { SKILLLINK_ADDR } from "./contracts";
+
+// Block at which SkillLink was deployed. Mirrors apps/analytics START_BLOCK
+// so we never scan further back than necessary — public Sepolia RPCs cap
+// eth_getLogs at 1000 blocks per call, so unbounded sweeps fail outright.
+const SKILLLINK_DEPLOY_BLOCK = 10_772_615n;
+const RPC_BLOCK_LIMIT = 1000n;
 
 // Confirmed signature on the deployed SkillLink (probed via eth_getLogs):
 //   SkillRegistered(bytes32 node, address impl, address owner, bytes4[] selectors)
@@ -57,34 +63,56 @@ export interface SkillEventStream {
 }
 
 /**
+ * Public Sepolia RPCs (thirdweb, publicnode, etc.) cap eth_getLogs at 1000
+ * blocks per request. Chunk the [from, to] range into 1000-block windows
+ * and fan them out in parallel. Caps total chunks to avoid hammering an RPC
+ * when fromBlock is wildly behind head.
+ */
+async function chunkedGetLogs(
+  client: PublicClient,
+  fromBlock: bigint,
+  toBlock: bigint,
+  maxChunks = 50,
+): Promise<Log[]> {
+  const ranges: { from: bigint; to: bigint }[] = [];
+  for (let cur = fromBlock; cur <= toBlock; cur += RPC_BLOCK_LIMIT) {
+    const end = cur + RPC_BLOCK_LIMIT - 1n;
+    ranges.push({ from: cur, to: end > toBlock ? toBlock : end });
+    if (ranges.length >= maxChunks) break;
+  }
+  const results = await Promise.all(
+    ranges.map((r) =>
+      client
+        .getLogs({
+          address: SKILLLINK_ADDR,
+          fromBlock: r.from,
+          toBlock: r.to,
+        })
+        .catch(() => [] as Log[]),
+    ),
+  );
+  return results.flat();
+}
+
+/**
  * Fetch all SkillLink events for one ENS name. Reads raw logs filtered by
  * `topic[1] === namehash(ensName)` (both SkillRegistered and SkillCalled
  * have the namehash as their first indexed arg) so we don't need to know
  * the exact SkillCalled signature ahead of time.
  *
- * `lookbackBlocks` is the cap on how far we scan. Default ~600k blocks (~80
- * days on Sepolia) which covers the entire SkillLink deployment lifetime.
+ * Scan starts at the SkillLink deploy block — public Sepolia RPCs cap
+ * eth_getLogs at 1000 blocks per call, so we chunk and parallelize.
  */
 export async function fetchSkillEvents(
   client: PublicClient,
   ensName: string,
-  lookbackBlocks = 600_000n,
 ): Promise<SkillEventStream> {
   const t0 = performance.now();
   const node = namehash(ensName) as `0x${string}`;
   const head = await client.getBlockNumber();
-  const fromBlock = head > lookbackBlocks ? head - lookbackBlocks : 0n;
+  const fromBlock = SKILLLINK_DEPLOY_BLOCK;
 
-  // Fetch ALL logs from the contract, filter by topic[1] = node client-side.
-  // viem's typed getLogs doesn't expose a raw topics filter without binding
-  // to a specific event ABI. SkillLink is low-traffic so the unfiltered fetch
-  // is cheap; this also lets us discover unknown event types alongside the
-  // known SkillRegistered/SkillCalled topics.
-  const allLogs = await client.getLogs({
-    address: SKILLLINK_ADDR,
-    fromBlock,
-    toBlock: head,
-  });
+  const allLogs = await chunkedGetLogs(client, fromBlock, head);
   const logs = allLogs.filter(
     (l) => l.topics.length > 1 && (l.topics[1] as string).toLowerCase() === node.toLowerCase(),
   );
