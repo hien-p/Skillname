@@ -133,12 +133,24 @@
     },
     "LocalExecution": {
       "type": "object",
-      "required": ["type", "handler"],
+      "required": ["type"],
+      "anyOf": [
+        { "required": ["handler"] },
+        { "required": ["code"] }
+      ],
       "properties": {
         "type": { "const": "local" },
+        "runtime": {
+          "type": "string",
+          "description": "Local handler runtime contract version (e.g. 'ctx-v1' for the (input, ctx) signature with ctx.call)"
+        },
         "handler": {
           "type": "string",
-          "description": "Path to handler file within the bundle"
+          "description": "Path to handler file within the bundle (legacy; prefer inline 'code')"
+        },
+        "code": {
+          "type": "string",
+          "description": "Inline handler source — async expression evaluating to a function (input, ctx) => result. Lets the bundle ship its handler with the manifest, no extra files."
         }
       }
     },

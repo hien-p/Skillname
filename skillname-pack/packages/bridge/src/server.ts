@@ -519,20 +519,110 @@ async function executeRouted(
   }
 }
 
+/**
+ * Local executor — runs handler code declared inline in the manifest's
+ * execution block. The handler receives (input, ctx) where ctx.call lets it
+ * fan out to other imported skills (the dep graph the bridge already walked
+ * during skill_import). This is what makes composite skills like
+ * agent-research__research_token actually compose, instead of returning a
+ * stub.
+ *
+ * Handler shape (inline):
+ *   execution: {
+ *     type: "local",
+ *     runtime: "ctx-v1",
+ *     code: "(async (input, ctx) => { ... return result })"
+ *   }
+ *
+ * ctx.call(ensName, toolName, args) routes through the same executor switch
+ * any imported skill would use. Returns the parsed JSON value (not the MCP
+ * envelope) so handlers can do `data.usd` instead of `data.content[0].text`.
+ *
+ * Security note: this evals code that came off 0G storage. For a hackathon
+ * demo on a curated catalog this is fine — production would sandbox via
+ * QuickJS / isolated-vm and gate by a manifest publisher allowlist.
+ */
 async function executeLocal(
   tool: Tool,
   args: Record<string, unknown>,
-  _skill: ImportedSkill,
+  skill: ImportedSkill,
 ) {
-  // Hackathon stub: real impl loads handler from bundle and executes.
-  return {
-    content: [
-      {
-        type: "text",
-        text: `[stub] Local execution for ${tool.name} with args: ${JSON.stringify(args)}`,
-      },
-    ],
+  const exec = tool.execution as { type: "local"; runtime?: string; code?: string; handler?: string | { runtime?: string; code?: string } };
+
+  // Accept the code in two places for forward-compat:
+  //   1. execution.code (string)              — preferred, inline
+  //   2. execution.handler.code (string)      — when handler is an object
+  let code: string | undefined = exec.code;
+  if (!code && exec.handler && typeof exec.handler === "object") {
+    code = exec.handler.code;
+  }
+
+  if (!code) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `[stub] Local handler for ${tool.name} not inlined. Add execution.code (or execution.handler.code) to the manifest. args: ${JSON.stringify(args)}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  // ctx.call(ens, tool, args) → dispatches to the appropriate executor for
+  // the named imported skill. Returns the parsed value, not the MCP envelope.
+  const ctx = {
+    call: async (ensName: string, toolName: string, callArgs: Record<string, unknown>) => {
+      const target = imported.get(ensName);
+      if (!target) {
+        throw new Error(`skill ${ensName} not imported (call skill_import first or add to dependencies)`);
+      }
+      const t = target.result.bundle.tools.find((x) => x.name === toolName);
+      if (!t) {
+        throw new Error(`tool ${toolName} not found on ${ensName}`);
+      }
+      log.info(`  → ctx.call(${ensName}, ${toolName})`);
+      const result = await executeRouted(t, callArgs, target);
+      // Unwrap MCP envelope to the inner text and try to JSON.parse it for
+      // ergonomic chaining (handlers want `quote.usd`, not `JSON.parse(content[0].text).usd`).
+      const text = result.content?.[0]?.text ?? "";
+      if (result.isError) throw new Error(text || `tool ${toolName} returned error`);
+      try {
+        return JSON.parse(text);
+      } catch {
+        return text; // non-JSON response — return as string
+      }
+    },
   };
+
+  log.info(`local handler · ${tool.name} · runtime ${exec.runtime ?? "ctx-v1"}`);
+  const t0 = Date.now();
+  try {
+    // AsyncFunction constructor — evals the code as an expression that
+    // returns an async function, then we invoke it with (args, ctx).
+    const fn = (0, eval)(code) as (input: Record<string, unknown>, ctx: unknown) => Promise<unknown>;
+    if (typeof fn !== "function") {
+      throw new Error("execution.code did not evaluate to a function");
+    }
+    const result = await fn(args, ctx);
+    log.ok(`local handler ${tool.name} done in ${Date.now() - t0}ms`);
+    return {
+      content: [
+        {
+          type: "text",
+          text: typeof result === "string" ? result : JSON.stringify(result, null, 2),
+        },
+      ],
+      isError: false,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    log.err(`local handler ${tool.name} failed: ${msg}`);
+    return {
+      content: [{ type: "text", text: `Local handler error: ${msg}` }],
+      isError: true,
+    };
+  }
 }
 
 async function executeKeeperHub(

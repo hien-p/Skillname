@@ -41,7 +41,8 @@
       },
       "execution": {
         "type": "local",
-        "handler": "tools/research_token.json"
+        "runtime": "ctx-v1",
+        "code": "(async ({ token_id, holder_address }, ctx) => { const [quote, score] = await Promise.all([ ctx.call('quote.skilltest.eth', 'get_quote', { ids: token_id }).catch(e => ({ _err: String(e?.message ?? e) })), ctx.call('score.skilltest.eth', 'trust_score', { address: holder_address }).catch(e => ({ _err: String(e?.message ?? e) })) ]); const price_usd = quote?.[token_id]?.usd ?? null; const passport_score = score?.score ?? (score?._err ? `unavailable (${score._err.slice(0, 60)})` : 'unknown'); const promptText = `Token \"${token_id}\" trades at $${price_usd}. Holder ${holder_address} has a Gitcoin Passport score of ${passport_score}. In one sentence: is this a reasonable counterparty to interact with on-chain?`; let verdict; try { const v = await ctx.call('infer.skilltest.eth', 'infer', { prompt: promptText }); verdict = typeof v === 'string' ? v : (v?.text ?? v?.content?.[0]?.text ?? JSON.stringify(v)); } catch (e) { verdict = `0G Compute unavailable: ${String(e?.message ?? e).slice(0, 80)}`; } return { token_id, holder_address, price_usd, passport_score, verdict, sources: { quote: 'quote.skilltest.eth → CoinGecko', score: 'score.skilltest.eth → Gitcoin Passport', verdict: 'infer.skilltest.eth → 0G Compute (qwen-2.5-7b)' } }; })"
       }
     }
   ],
