@@ -3,6 +3,7 @@ import { resolveSkill, type ResolvedSkill } from "../lib/skill-resolve";
 import { TrustPanel } from "./TrustPanel";
 import { TryItButton } from "./TryItButton";
 import { RegistryPanel } from "./RegistryPanel";
+import { OGStorageBadge } from "./OGStorageBadge";
 
 const TABS = ["Readme", "Tools", "Registry", "Dependencies", "Trust"] as const;
 type Tab = typeof TABS[number];
@@ -78,6 +79,9 @@ export function SkillDetail({ ensName, onClose }: Props) {
             <h1 className="font-display text-6xl mt-2">{r.manifest.name}</h1>
             <div className="mt-2 font-mono text-sm text-slate-ink">
               v{r.manifest.version} · {r.manifest.license ?? "MIT"} · {r.manifest.ensName}
+            </div>
+            <div className="mt-3">
+              <OGStorageBadge storage={r.storage} ensMs={r.ensMs} />
             </div>
 
             {tab === "Readme" && (

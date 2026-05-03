@@ -584,12 +584,41 @@
 
       <main>
 
+        <!-- ── DAY 11 ── -->
+        <section class="day-section" id="day-11">
+          <div class="day-header">
+            <div class="day-num">D11</div>
+            <div class="day-name">browser→0G publish · on-chain caller log · 0G storage made visible</div>
+            <div class="label">2026·05·03 · SAT · TODAY</div>
+          </div>
+
+          <article class="card entry">
+            <div class="hover-flag">FEATURE</div>
+            <div class="entry-time">12:00 · STAGING</div>
+            <div class="entry-title">Publish a skill end-to-end in the browser — pin to 0G + 4 ENS sigs</div>
+            <ul>
+              <li>New <code>scripts/pin-server.ts</code> (Hono on :3030) wraps the 0G Go CLI behind <code>POST /pin</code>; <code>pnpm pin:server</code> boots it. Smoke test: pinned a 225-byte manifest to Galileo in 23s, root <code>0x4851da2c4995022e919c0ca8b4135d659337d0c59dbe01742528332e27be2e7c</code>, real submitLogEntry tx on the 0G storage contract</li>
+              <li><code>PublishOverlay</code> rebuilt as a 2-stage flow: Stage 1 — Pin to 0G (with live <code>● pin-service ready</code> health badge, ANSI-stripped CLI log details); Stage 2 — 4 wallet sigs on Sepolia. Manual CID input is gone. Pipeline checklist on the side rail ticks ✓ as each beat completes</li>
+              <li>On-chain caller log per skill (<code>components/CallerLog.tsx</code>): reads <code>SkillRegistered</code> + <code>SkillCalled</code> events from SkillLink filtered by namehash, decodes via 4byte directory, ENS-reverse on caller addresses (mainnet RPC). Renders below the Registry panel as a per-skill activity feed — proves real usage, not just deploy state</li>
+              <li>0G made visible everywhere: <code>OGStorageBadge</code> on Hero + SkillDetail header shows <code>● 0G GALILEO · root 0x… · Xms (+ens Yms)</code> with link to the indexer. New <code>OGStorageCard</code> on the homepage bento aggregates pinned manifest count + total bytes + avg fetch ms across the catalog</li>
+              <li><code>resolveSkill()</code> now captures per-stage timing (ENS read vs 0G storage round-trip vs total), so the badge is honest about what it&apos;s measuring</li>
+            </ul>
+            <div class="proof-label label">image (proof of work):</div>
+            <div class="proof-grid">
+              <div class="proof">pin-server health green</div>
+              <div class="proof">browser pinning to Galileo live</div>
+              <div class="proof">0G badge on Hero + SkillDetail</div>
+              <div class="proof">caller log per skill</div>
+            </div>
+          </article>
+        </section>
+
         <!-- ── DAY 10 ── -->
         <section class="day-section" id="day-10">
           <div class="day-header">
             <div class="day-num">D10</div>
             <div class="day-name">wallet sign in the UI · on-chain publish + register · my-skills discovery · trust reframed</div>
-            <div class="label">2026·05·03 · SAT · TODAY</div>
+            <div class="label">2026·05·03 · SAT</div>
           </div>
 
           <article class="card entry">
