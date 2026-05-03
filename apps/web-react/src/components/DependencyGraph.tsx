@@ -1,5 +1,3 @@
-import { CATALOG_ITEMS } from "./SkillCatalog";
-
 // Static composite map — derived from the published manifests.
 // Update when a new composite ships. Mirrors what the bridge sees from
 // xyz.manifest.skill.imports for each ENS name in the registry.
