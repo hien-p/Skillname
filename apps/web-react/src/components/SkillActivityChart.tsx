@@ -125,11 +125,19 @@ export function SkillActivityChart({ ensName }: Props) {
       <header className="flex items-baseline justify-between gap-3 flex-wrap">
         <div>
           <span className="font-mono text-[10px] uppercase tracking-wider text-slate-ink">
-            ON-CHAIN ACTIVITY · sepolia · skill-link
+            REGISTRY DISPATCH EVENTS · sepolia · SkillLink only
           </span>
           <h3 className="font-display text-xl text-midnight-navy mt-0.5">
-            Calls + registrations for <code className="font-mono text-base">{ensName}</code>
+            On-chain calls + registrations for <code className="font-mono text-base">{ensName}</code>
           </h3>
+          <p className="text-[11px] text-slate-ink font-body mt-1 max-w-2xl">
+            Counts <code className="font-mono">SkillCalled</code> events emitted by{" "}
+            <code className="font-mono">SkillLink.call(node, calldata)</code> on Sepolia. Off-chain
+            MCP calls (Claude Desktop → bridge → HTTP/0G/Keeperhub) don't appear here — only skills
+            with <code className="font-mono">useRegistry: true</code> in their{" "}
+            <code className="font-mono">contract</code> execution leave a trace. Today that's{" "}
+            <code className="font-mono">agg.skilltest.eth</code> (try the homepage Run demo button).
+          </p>
         </div>
         {data && (
           <div className="font-mono text-[10px] uppercase tracking-wider text-slate-ink text-right">
