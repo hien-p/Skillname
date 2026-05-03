@@ -233,8 +233,16 @@ export function OnchainActivityChart({ onSelect }: Props) {
                   title={`${s.ens} — last activity at block ${s.lastBlock}`}
                 >
                   <div className="flex items-baseline justify-between font-mono text-[11px]">
-                    <span className="text-bento-text-display group-hover:underline truncate">
+                    <span className="flex items-center gap-1.5 text-bento-text-display group-hover:underline truncate">
                       {s.ens}
+                      {CATALOG_ITEMS.find((c) => c.ens === s.ens)?.trust && (
+                        <span
+                          className="text-bento-success text-[9px] font-mono uppercase tracking-wider"
+                          title="ENSIP-25 + ERC-8004 bound"
+                        >
+                          ✓ ensip-25
+                        </span>
+                      )}
                     </span>
                     <span className="text-bento-text-secondary tabular-nums">
                       {formatValue(metric, s.value)}
